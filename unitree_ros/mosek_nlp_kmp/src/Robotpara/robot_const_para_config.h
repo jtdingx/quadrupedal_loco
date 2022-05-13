@@ -41,6 +41,7 @@ namespace gait{
     
     extern const double height_offset_time;
     extern const double height_offsetx; 
+
     
 }//namespace gait
 

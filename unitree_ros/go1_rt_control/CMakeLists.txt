@@ -72,7 +72,9 @@ add_executable(go1_servo
                src/Filter/butterworth_filter.cpp
                src/Filter/butterworthLPF.cpp
                src/kinematics/Kinematics.cpp
-               src/Robotpara/robot_const_para_config.cpp)
+               src/Robotpara/robot_const_para_config.cpp
+               src/whole_body_dynamics/dynmics_compute.cpp
+               src/utils/Utils.cpp)
 
 target_link_libraries(go1_servo 
                       ${PROJECT_NAME} ${catkin_LIBRARIES})

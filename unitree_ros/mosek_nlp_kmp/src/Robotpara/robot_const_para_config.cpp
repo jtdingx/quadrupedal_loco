@@ -30,6 +30,7 @@ namespace gait {
     //const double height_offsetx = 0.01; //climbing and resting on the stone
     //const double height_offsetx = 0.015; //climbing multi stairs
     
+
 }
 
 

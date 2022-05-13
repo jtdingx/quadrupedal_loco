@@ -36,7 +36,6 @@ sensor_msgs::JointState joint2simulation;
 
 
 
-
 class multiThread
 {
 public:
@@ -63,9 +62,6 @@ public:
         //// topic with first-layer MPC
         nrt_mpc_gait_subscribe_ = nm.subscribe("/MPC/Gait", 10, &multiThread::nrt_gait_sub_operation, this);
         gait_des_sub_ = nm.subscribe("/rtMPC/traj", 10,&multiThread::rt_gait_sub_operation, this);
-             
-    
-    
     }
 
     void imuCallback(const sensor_msgs::Imu & msg)
@@ -234,7 +230,7 @@ public:
 	{
 	    slow_mpc_gait(jx) = msg->position[jx]; 
 	}
-	mpc_gait_flag = slow_mpc_gait(99);
+	    mpc_gait_flag = slow_mpc_gait(99);
     }
     
     
@@ -269,27 +265,76 @@ int main(int argc, char **argv)
 
     string robot_name;
     ros::param::get("/robot_name", robot_name);
+    string control_mode;
+    ros::param::get("/rctr", control_mode);
     cout << "robot_name: " << robot_name << endl;
+    cout << "control_model: " << control_mode << endl;
     
 
     gait_mode = 102;
     x_offset = 0.01;
-    y_offset = 0.75;
+
+    if (gait_mode ==101) ///bipedal
+    {
+        y_offset = 0.75;
+    }
+    else
+    {
+        if (gait_mode ==102) ///bipedal
+        {
+            y_offset = 0.15;
+        }
+        else
+        { 
+            y_offset = 0.11;
+        }        
+    }
 
 
     //desired joint angles
     FR_angle_des.setZero(); FL_angle_des.setZero(); RR_angle_des.setZero(); RL_angle_des.setZero(); 
     //measure angles
     FR_angle_mea.setZero(); FL_angle_mea.setZero(); RR_angle_mea.setZero(); RL_angle_mea.setZero();
+    FR_dq_mea.setZero();    FL_dq_mea.setZero();    RR_dq_mea.setZero();    RL_dq_mea.setZero();
+
+    /// Jacobian:
+    FR_Jaco.setZero();
+    FL_Jaco.setZero();
+    RR_Jaco.setZero();
+    RL_Jaco.setZero();
+
+    /// Jacobian measured:
+    FR_Jaco_est.setZero();
+    FL_Jaco_est.setZero();
+    RR_Jaco_est.setZero();
+    RL_Jaco_est.setZero();  
+
+    FR_v_relative.setZero(); 
+    FL_v_relative.setZero();
+    RR_v_relative.setZero(); 
+    RL_v_relative.setZero();
+    FR_v_est_relative.setZero(); 
+    FL_v_est_relative.setZero();
+    RR_v_est_relative.setZero(); 
+    RL_v_est_relative.setZero();
+
+
+
 
     // desired foot location reatlive to body center;
     FR_foot_relative_des.setZero(); FL_foot_relative_des.setZero();
     RR_foot_relative_des.setZero(); RL_foot_relative_des.setZero();
 
+    FR_foot_relative_des_old.setZero(); FL_foot_relative_des_old.setZero();
+    RR_foot_relative_des_old.setZero(); RL_foot_relative_des_old.setZero();    
+
     // measured foot location reatlive to body center;
     FR_foot_relative_mea.setZero(); FL_foot_relative_mea.setZero();
     RR_foot_relative_mea.setZero(); RL_foot_relative_mea.setZero(); 
-    
+    FR_foot_relative_mea_old.setZero(); FL_foot_relative_mea_old.setZero();
+    RR_foot_relative_mea_old.setZero(); RL_foot_relative_mea_old.setZero(); 
+
+
     // desired body posioin and rotation
     body_p_Homing.setZero();
     FR_foot_Homing.setZero();
@@ -304,9 +349,44 @@ int main(int argc, char **argv)
     FL_foot_des.setZero(); 
     RR_foot_des.setZero(); 
     RL_foot_des.setZero();
-   
 
-////////////////////////// state estimation///////////////////////
+    body_p_est.setZero();
+    body_r_est.setZero();
+
+    root_pos.setZero();
+    root_quat.setIdentity();
+    root_euler.setZero();
+    root_rot_mat.setZero();
+    root_rot_mat_z.setZero();
+    root_lin_vel.setZero();
+    root_ang_vel.setZero();
+    root_acc.setZero();
+
+    ////// Force distribution 
+    F_sum.setZero();
+    Momentum_sum << 2*0.0168352186, 2*0.0004636141, 2*0.0002367952,
+                    2*0.0004636141, 2*0.0656071082, 2*3.6671e-05, 
+                    2*0.0002367952, 2*3.6671e-05,   2*0.0742720659;
+
+
+    rleg_com = 0; 
+    lleg_com= 0;
+    F_lr_predict.setZero();   
+    Force_L_R.setZero();   
+    bjx1 = 1;
+
+    FR_torque.setZero(); 
+    FL_torque.setZero(); 
+    RR_torque.setZero(); 
+    RL_torque.setZero();  
+    Legs_torque.setZero();   
+
+    FR_swing = false; 
+    FL_swing = false;
+    RR_swing = false;
+    RL_swing = false;              
+
+    ////////////////////////// state estimation///////////////////////
     support_flag = 0; /////left: 0; right: 1; double: 2
 
     fz_double = gait::mass * gait::_g /2; 
@@ -339,6 +419,8 @@ int main(int argc, char **argv)
         com_sensor_pre[i] = 0;
         com_des[i] = 0;
         com_des_pre[i] = 0;
+        comv_des[i] = 0;
+        coma_des[i] = 0;
         rfoot_des[i] = 0;
         lfoot_des[i] = 0;
         theta_des[i] = 0;
@@ -380,7 +462,7 @@ int main(int argc, char **argv)
 
 
 
-////////////////////// real-time mpc loop /////////////////////////	
+    ////////////////////// real-time mpc loop /////////////////////////	
     count_in_mpc_max = 1000;
     count_in_rt_loop = 0;
 
@@ -467,7 +549,7 @@ int main(int argc, char **argv)
 	bodyangle_state.setZero();
 
 	count_in_rt_loop = 0;
-	count_in_rt_mpc = 0;
+	count_in_rt_ros = 0;
 
 	count_inteplotation = 0;
 	count_inteplotation_fast = 0;
@@ -485,8 +567,8 @@ int main(int argc, char **argv)
 	
 	//// gait filter
     f_sample_comx1 = 1/gait::t_program_cyclic;
-	fcutoff_comx1 = 4;
-	fcutoff_comx2 = 5;
+	fcutoff_comx1 = 3;
+	fcutoff_comx2 = 10;
 	butterworthLPF1.init(f_sample_comx1,fcutoff_comx1);	
 	butterworthLPF2.init(f_sample_comx1,fcutoff_comx1);	
 	butterworthLPF3.init(f_sample_comx1,fcutoff_comx1);	
@@ -494,24 +576,25 @@ int main(int argc, char **argv)
 	butterworthLPF5.init(f_sample_comx1,fcutoff_comx1);	
 	butterworthLPF6.init(f_sample_comx1,fcutoff_comx1);	
 	butterworthLPF7.init(f_sample_comx1,fcutoff_comx1);	
-	butterworthLPF8.init(f_sample_comx1,fcutoff_comx2);	
+	butterworthLPF8.init(f_sample_comx1,fcutoff_comx1);	
 	butterworthLPF9.init(f_sample_comx1,fcutoff_comx1);	
 	butterworthLPF10.init(f_sample_comx1,fcutoff_comx1);	
-	butterworthLPF11.init(f_sample_comx1,fcutoff_comx2);	
-	butterworthLPF12.init(f_sample_comx1,fcutoff_comx1);	
-	butterworthLPF13.init(f_sample_comx1,fcutoff_comx1);	
-	butterworthLPF14.init(f_sample_comx1,fcutoff_comx1);	
-	butterworthLPF15.init(f_sample_comx1,fcutoff_comx1);	
-	butterworthLPF16.init(f_sample_comx1,fcutoff_comx1);	
-	butterworthLPF17.init(f_sample_comx1,fcutoff_comx1);	
-	butterworthLPF18.init(f_sample_comx1,fcutoff_comx1);	
-	butterworthLPF19.init(f_sample_comx1,fcutoff_comx1);	
-	butterworthLPF20.init(f_sample_comx1,fcutoff_comx1);
-	butterworthLPF21.init(f_sample_comx1,fcutoff_comx1);	
-	butterworthLPF22.init(f_sample_comx1,fcutoff_comx1);
+	butterworthLPF11.init(f_sample_comx1,fcutoff_comx1);	
+	butterworthLPF12.init(f_sample_comx1,fcutoff_comx2);	
+	butterworthLPF13.init(f_sample_comx1,fcutoff_comx2);	
+	butterworthLPF14.init(f_sample_comx1,fcutoff_comx2);	
+
 	
-	fcutoff_comx3 = 5;
-	butterworthLPF23.init(f_sample_comx1,fcutoff_comx3);	
+	fcutoff_comx3 = 20;
+	butterworthLPF15.init(f_sample_comx1,fcutoff_comx3);	
+	butterworthLPF16.init(f_sample_comx1,fcutoff_comx3);	
+	butterworthLPF17.init(f_sample_comx1,fcutoff_comx3);	
+	butterworthLPF18.init(f_sample_comx1,fcutoff_comx3);	
+	butterworthLPF19.init(f_sample_comx1,fcutoff_comx3);	
+	butterworthLPF20.init(f_sample_comx1,fcutoff_comx3);
+	butterworthLPF21.init(f_sample_comx1,fcutoff_comx3);	
+	butterworthLPF22.init(f_sample_comx1,fcutoff_comx3);
+    butterworthLPF23.init(f_sample_comx1,fcutoff_comx3);    
 	butterworthLPF24.init(f_sample_comx1,fcutoff_comx3);	
 	butterworthLPF25.init(f_sample_comx1,fcutoff_comx3);	
 	butterworthLPF26.init(f_sample_comx1,fcutoff_comx3);	
@@ -536,6 +619,7 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
     ros::Publisher lowState_pub; //for rviz visualization
     ros::Publisher gait_data_pub; // for data_analysis
+    ros::Publisher gait_data_pubx;
     ros::Publisher control_to_rtmpc_pub_; /// state feedback to rtmpc
     
     rt_frequency = 1000; /// frequency of lower_level control
@@ -548,7 +632,7 @@ int main(int argc, char **argv)
     
     
 
-
+    cout << "initial"<<endl;
    
 
     // the following nodes have been initialized by "gazebo.launch"
@@ -566,17 +650,29 @@ int main(int argc, char **argv)
     servo_pub[10] = n.advertise<unitree_legged_msgs::MotorCmd>("/" + robot_name + "_gazebo/RL_thigh_controller/command", 1);
     servo_pub[11] = n.advertise<unitree_legged_msgs::MotorCmd>("/" + robot_name + "_gazebo/RL_calf_controller/command", 1);
     gait_data_pub = n.advertise<sensor_msgs::JointState>("go1_gait_data",10);
+    gait_data_pubx = n.advertise<sensor_msgs::JointState>("go1_gait_datax",10);
     control_to_rtmpc_pub_ = n.advertise<sensor_msgs::JointState>("/control2rtmpc/state", 10);
+    
+    
+    
     ///// a must : parameter initailization for robot control
     paramInit();
 
+
+    
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////*************************************************** main control loop ********************************////
     while (ros::ok()){
+
+        count_in_rt_ros += 1;
         // publisher measured state:
         lowState_pub.publish(lowState);/// for data analysis
         
-        ////////////////////////// state estimation ///////////////////////////////////////////////
-
-        // Forward kinematics: for kinematic-based state estimation
+        
+        bjx1 = slow_mpc_gait(27);
+        
+        ////////////////////////// kinematic-based state estimation ///////////////////////////////////////////////
+        // Forward kinematics: for kinematic-based state estimation //////////////////////////////////////////////
         FR_angle_mea(0,0) = lowState.motorState[0].q;
         FR_angle_mea(1,0) = lowState.motorState[1].q;
         FR_angle_mea(2,0) = lowState.motorState[2].q;
@@ -589,24 +685,69 @@ int main(int argc, char **argv)
         RL_angle_mea(0,0) = lowState.motorState[9].q;
         RL_angle_mea(1,0) = lowState.motorState[10].q;
         RL_angle_mea(2,0) = lowState.motorState[11].q;
+
+        FR_dq_mea(0,0) = lowState.motorState[0].dq;
+        FR_dq_mea(1,0) = lowState.motorState[1].dq;
+        FR_dq_mea(2,0) = lowState.motorState[2].dq;
+        FL_dq_mea(0,0) = lowState.motorState[3].dq;
+        FL_dq_mea(1,0) = lowState.motorState[4].dq;
+        FL_dq_mea(2,0) = lowState.motorState[5].dq;
+        RR_dq_mea(0,0) = lowState.motorState[6].dq;
+        RR_dq_mea(1,0) = lowState.motorState[7].dq;
+        RR_dq_mea(2,0) = lowState.motorState[8].dq;
+        RL_dq_mea(0,0) = lowState.motorState[9].dq;
+        RL_dq_mea(1,0) = lowState.motorState[10].dq;
+        RL_dq_mea(2,0) = lowState.motorState[11].dq;
+
+
+        //// IMU quaternion
+        root_quat = Eigen::Quaterniond(lowState.imu.quaternion[0],
+                                       lowState.imu.quaternion[1],
+                                       lowState.imu.quaternion[2],
+                                       lowState.imu.quaternion[3]);         
+
+        // euler angle: roll pitch yaw
+        root_rot_mat = root_quat.toRotationMatrix();
+        root_euler = Utils::quat_to_euler(root_quat);
+        body_r_est(0,0) = root_euler(0);
+        body_r_est(1,0) = root_euler(1);
+        body_r_est(2,0) = root_euler(2);
+
+        double yaw_angle = root_euler[2];
+        root_rot_mat_z = Eigen::AngleAxisd(yaw_angle, Eigen::Vector3d::UnitZ());
+
+        /// relative to body center. global framework;
+        FR_foot_relative_mea = Kine.Forward_kinematics_g(body_p_est, body_r_est,FR_angle_mea, 0);
+        FR_Jaco_est = Kine.Jacobian_kin;
+        FL_foot_relative_mea = Kine.Forward_kinematics_g(body_p_est, body_r_est,FL_angle_mea, 1);
+        FL_Jaco_est = Kine.Jacobian_kin;
+        RR_foot_relative_mea = Kine.Forward_kinematics_g(body_p_est, body_r_est,RR_angle_mea, 2);
+        RR_Jaco_est = Kine.Jacobian_kin;
+        RL_foot_relative_mea = Kine.Forward_kinematics_g(body_p_est, body_r_est,RL_angle_mea, 3);
+        RL_Jaco_est = Kine.Jacobian_kin;
         
-        /// relative to body center
-        FR_foot_relative_mea = Kine.Forward_kinematics(FR_angle_mea, 0);
-        FL_foot_relative_mea = Kine.Forward_kinematics(FL_angle_mea, 1);
-        RR_foot_relative_mea = Kine.Forward_kinematics(RR_angle_mea, 2);
-        RL_foot_relative_mea = Kine.Forward_kinematics(RL_angle_mea, 3);
+        //// relative velocity in global framework: another way is to use differential of measured retlative position;
+        // FR_v_est_relative = FR_Jaco_est * FR_dq_mea;
+        // FL_v_est_relative = FL_Jaco_est * FL_dq_mea; 
+        // RR_v_est_relative = RR_Jaco_est * RR_dq_mea;
+        // RL_v_est_relative = RL_Jaco_est * RL_dq_mea; 
+        
+        if (count_in_rt_ros > 1)
+        {
+            FR_v_est_relative = (FR_foot_relative_mea - FR_foot_relative_mea_old)/dtx;
+            FL_v_est_relative = (FL_foot_relative_mea - FL_foot_relative_mea_old)/dtx;
+            RR_v_est_relative = (RR_foot_relative_mea - RR_foot_relative_mea_old)/dtx;
+            RL_v_est_relative = (RL_foot_relative_mea - RL_foot_relative_mea_old)/dtx;            
+        }
 
-
+        
         for (int jx = 0; jx<25; jx++)
         {
-        state_to_MPC.position[jx] = state_feedback(jx,0);
+          state_to_MPC.position[jx] = state_feedback(jx,0);
         }        
-
-        control_to_rtmpc_pub_.publish(state_to_MPC); //// state feedback to MPC; 1+5*p,v,a+3*3*position;
+        control_to_rtmpc_pub_.publish(state_to_MPC); //// state feedback to MPC; 1+5*body p,v,a+3*3*foot position;
         
         
-
-
         //////////////////// gait control loop/////////////////////////////////////////////////////
         /// *****************joint cmd generation*******************////
         double targetPos[12]  = {0, 0.87, -1.5, 0, 0.87, -1.5, 0, 0.87, -1.5, 0, 0.87, -1.5};  
@@ -650,6 +791,7 @@ int main(int argc, char **argv)
             FL_foot_Homing = FL_foot_des;
             RR_foot_Homing = RR_foot_des;
             RL_foot_Homing = RL_foot_des;
+            //cout<< "xxxx!!!!!!!!!!!!!!!!!!!!xxxxxxxx"<<endl;      
         }
         else   
         {
@@ -730,7 +872,7 @@ int main(int argc, char **argv)
             // }
             
             
-            ///////////////////////////////////// MPC gait planner test //////////////////////////
+            ///////////////////////////////////// MPC gait planner //////////////////////////
             /////// rt loop counter 
             count_in_rt_loop += 1;  
             t_int = ((int) round(count_in_rt_loop/n_t_int));
@@ -739,38 +881,38 @@ int main(int argc, char **argv)
             
             //// non -real-time intepoloation: data filter: from hierachical convex optimization:
 
-            com_des[0] = butterworthLPF1.filter(fast_mpc_gait(0,0));
-            com_des[1] = butterworthLPF2.filter(fast_mpc_gait(1,0));
-            com_des[2] = butterworthLPF3.filter(fast_mpc_gait(2,0));
+            com_des[0] = butterworthLPF1.filter(slow_mpc_gait(0,0));
+            com_des[1] = butterworthLPF2.filter(slow_mpc_gait(1,0));
+            com_des[2] = butterworthLPF3.filter(slow_mpc_gait(2,0));
             
             theta_des[0] = 0;
             theta_des[1] = 0;	    
             theta_des[2] = 0;            
-            // theta_des[0] = butterworthLPF4.filter(fast_mpc_gait(36));
-            // theta_des[1] = butterworthLPF5.filter(fast_mpc_gait(37));	    
+            // theta_des[0] = butterworthLPF4.filter(slow_mpc_gait(36));
+            // theta_des[1] = butterworthLPF5.filter(slow_mpc_gait(37));	    
             // theta_des[2] = 0;
-            
-            rfoot_theta_des[0] = butterworthLPF12.filter(fast_mpc_gait(31));
-            rfoot_theta_des[1] = butterworthLPF13.filter(fast_mpc_gait(32));
-            rfoot_theta_des[2] = butterworthLPF14.filter(fast_mpc_gait(33));		
-            lfoot_theta_des[0] = butterworthLPF15.filter(fast_mpc_gait(28));
-            lfoot_theta_des[1] = butterworthLPF16.filter(fast_mpc_gait(29));
-            lfoot_theta_des[2] = butterworthLPF17.filter(fast_mpc_gait(30));		    
-            
-            rfoot_des[0] = butterworthLPF6.filter(fast_mpc_gait(9));
-            rfoot_des[1] = butterworthLPF7.filter(fast_mpc_gait(10));
-            rfoot_des[2] = butterworthLPF8.filter(fast_mpc_gait(11));
+               
+            rfoot_des[0] = butterworthLPF6.filter(slow_mpc_gait(9));
+            rfoot_des[1] = butterworthLPF7.filter(slow_mpc_gait(10));
+            rfoot_des[2] = butterworthLPF8.filter(slow_mpc_gait(11));
 
-            
-            lfoot_des[0] = butterworthLPF9.filter(fast_mpc_gait(6));
-            lfoot_des[1] = butterworthLPF10.filter(fast_mpc_gait(7));
-            lfoot_des[2] = butterworthLPF11.filter(fast_mpc_gait(8));
-    
-            zmp_ref[0] = butterworthLPF18.filter(fast_mpc_gait(12));
-            zmp_ref[1] = butterworthLPF19.filter(fast_mpc_gait(13));  		    
-            dcm_ref[0] = butterworthLPF20.filter(fast_mpc_gait(34));
-            dcm_ref[1] = butterworthLPF21.filter(fast_mpc_gait(35));
-            
+            lfoot_des[0] = butterworthLPF9.filter(slow_mpc_gait(6));
+            lfoot_des[1] = butterworthLPF10.filter(slow_mpc_gait(7));
+            lfoot_des[2] = butterworthLPF11.filter(slow_mpc_gait(8));
+
+            if (count_in_rt_loop>0)
+            {
+               comv_des[0] = (com_des[0] - com_des_pre[0]) /dtx;
+               comv_des[1] = (com_des[1] - com_des_pre[1]) /dtx;
+               comv_des[2] = (com_des[2] - com_des_pre[2]) /dtx;
+            }
+
+
+            coma_des[0] = butterworthLPF12.filter(slow_mpc_gait(39));
+            coma_des[1] = butterworthLPF13.filter(slow_mpc_gait(40));
+            coma_des[2] = butterworthLPF14.filter(slow_mpc_gait(41));		
+
+
             if (count_in_rt_loop * gait::t_program_cyclic >= 0.6)
             {
                 switch (gait_mode)
@@ -804,7 +946,7 @@ int main(int argc, char **argv)
                     break;
                 case 102:  ///troting
                     body_p_des[0] = com_des[0];
-                    body_p_des[1] = com_des[1] * 0.15;
+                    body_p_des[1] = com_des[1] * y_offset;
                     body_p_des[2] = com_des[2];
 
                     body_r_des[0] = theta_des[0];
@@ -831,7 +973,7 @@ int main(int argc, char **argv)
                     break;
                 case 103:  ///gallop: alter the  x-y direction
                     body_p_des[0] = com_des[0];
-                    body_p_des[1] = com_des[1] * 0.1;
+                    body_p_des[1] = com_des[1] * y_offset;
                     body_p_des[2] = com_des[2];
                     
                     // pitch angle generation //////
@@ -873,36 +1015,243 @@ int main(int argc, char **argv)
                 }
             }
 
-
-            
-           
+            ///cout << "xyyyy"<<endl;
             Eigen::Matrix<double,3,1>  q_ini;
             q_ini = FR_angle_des;
             FR_angle_des = Kine.Inverse_kinematics_g(body_p_des,body_r_des,FR_foot_des,q_ini,0);
+            FR_Jaco = Kine.Jacobian_kin;
 
             q_ini = FL_angle_des;
             FL_angle_des = Kine.Inverse_kinematics_g(body_p_des,body_r_des,FL_foot_des,q_ini,1);
+            FL_Jaco = Kine.Jacobian_kin;
 
             q_ini = RR_angle_des;
             RR_angle_des = Kine.Inverse_kinematics_g(body_p_des,body_r_des,RR_foot_des,q_ini,2);
+            RR_Jaco = Kine.Jacobian_kin;
 
             q_ini = RL_angle_des;
-            RL_angle_des = Kine.Inverse_kinematics_g(body_p_des,body_r_des,RL_foot_des,q_ini,3);           
+            RL_angle_des = Kine.Inverse_kinematics_g(body_p_des,body_r_des,RL_foot_des,q_ini,3);  
+            RL_Jaco = Kine.Jacobian_kin;
+
+            ///// Force distribute/// Grf generation         
+            Eigen::Matrix<double, 12,1> leg_position;
+            leg_position.block<3,1>(0,0) = FR_foot_des;
+            leg_position.block<3,1>(3,0) = FL_foot_des; 
+            leg_position.block<3,1>(6,0) = RR_foot_des;
+            leg_position.block<3,1>(9,0) = RL_foot_des; 
+
+            /////////////////////////////// desired foot position and foot velocity: relative to  body framework
+            FR_foot_relative_des = (FR_foot_des - body_p_des);
+            FL_foot_relative_des = (FL_foot_des - body_p_des);
+            RR_foot_relative_des = (RR_foot_des - body_p_des);
+            RL_foot_relative_des = (RL_foot_des - body_p_des);            
+            if (count_in_rt_loop>0)
+            {
+               FR_v_relative = (FR_foot_relative_des - FR_foot_relative_des_old) /dtx;
+               FL_v_relative = (FL_foot_relative_des - FL_foot_relative_des_old) /dtx;
+               RR_v_relative = (RR_foot_relative_des - RR_foot_relative_des_old) /dtx;
+               RL_v_relative = (RL_foot_relative_des - RL_foot_relative_des_old) /dtx;
+            }
+
+            double nt_slow_mpc;
+            nt_slow_mpc = (( count_in_rt_loop % n_t_int )* dtx) / (gait::dt_mpc_slow);
+            
+
+            //// prediction force
+            // F_sum(0) = gait::mass * slow_mpc_gait(80);
+            // F_sum(1) = gait::mass * slow_mpc_gait(81);
+            // F_sum(2) = gait::mass * gait::_g - gait::mass * slow_mpc_gait(82);
+            
+            F_sum(0) = gait::mass * coma_des[0];
+            F_sum(1) = gait::mass * coma_des[1];
+            F_sum(2) = gait::mass * gait::_g - gait::mass * coma_des[2];
+
+
+            double com_rleg_dis = sqrt(pow(com_des[0]-rfoot_des[0], 2) + pow(com_des[1]-rfoot_des[1], 2) + pow(com_des[2]-rfoot_des[2], 2));
+            double com_lleg_dis = sqrt(pow(com_des[0]-lfoot_des[0], 2) + pow(com_des[1]-lfoot_des[1], 2) + pow(com_des[2]-lfoot_des[2], 2));
+            rleg_com = com_rleg_dis/(com_rleg_dis + com_lleg_dis);
+            lleg_com = 1 - rleg_com;
+
 
             
-             // desired angle: generatee by inverse kinematics
-            lowCmd.motorCmd[0].q = FR_angle_des(0,0);
-            lowCmd.motorCmd[1].q = FR_angle_des(1,0);
-            lowCmd.motorCmd[2].q = FR_angle_des(2,0);
-            lowCmd.motorCmd[3].q = FL_angle_des(0,0);
-            lowCmd.motorCmd[4].q = FL_angle_des(1,0);
-            lowCmd.motorCmd[5].q = FL_angle_des(2,0);
-            lowCmd.motorCmd[6].q = RR_angle_des(0,0);
-            lowCmd.motorCmd[7].q = RR_angle_des(1,0);
-            lowCmd.motorCmd[8].q = RR_angle_des(2,0); 
-            lowCmd.motorCmd[9].q = RL_angle_des(0,0);
-            lowCmd.motorCmd[10].q = RL_angle_des(1,0);
-            lowCmd.motorCmd[11].q = RL_angle_des(2,0);         
+            if(bjx1 >= 2)
+            {
+                if(bjx1 % 2 ==0) ////left support
+                {
+                    F_lr_predict(0) = F_sum(0);
+                    F_lr_predict(1) = F_sum(1);
+                    F_lr_predict(2) = F_sum(2);
+                    F_lr_predict(3) = 0;
+                    F_lr_predict(4) = 0;
+                    F_lr_predict(5) = 0;
+
+
+                    switch (gait_mode)
+                        {
+                        case 101:  ////biped walking
+                            FR_swing = true;
+                            RR_swing = true;
+                            FR_swing = false;
+                            RR_swing = false;
+                            break;
+                        case 102:  ///troting
+                            FR_swing = true;
+                            RL_swing = true;
+                            FL_swing = false;
+                            RR_swing = false;
+
+                            break;
+                        case 103:  ///gallop: alter the  x-y direction
+                            FR_swing = true;
+                            FL_swing = true;
+                            RR_swing = false;
+                            RL_swing = false;                    
+
+                            break;            
+                        default:
+                            break;
+                        } 
+                }
+                else
+                {
+                    F_lr_predict(0) = 0;
+                    F_lr_predict(1) = 0;
+                    F_lr_predict(2) = 0;
+                    F_lr_predict(3) = F_sum(0);
+                    F_lr_predict(4) = F_sum(1);
+                    F_lr_predict(5) = F_sum(2);
+                    switch (gait_mode)
+                        {
+                        case 101:  ////biped walking
+                            FR_swing = false;
+                            RR_swing = false;
+                            FR_swing = true;
+                            RR_swing = true;
+                            break;
+                        case 102:  ///troting
+                            FR_swing = false;
+                            RL_swing = false;
+                            FL_swing = true;
+                            RR_swing = true;
+
+                            break;
+                        case 103:  ///gallop: alter the  x-y direction
+                            FR_swing = false;
+                            FL_swing = false;
+                            RR_swing = true;
+                            RL_swing = true;                    
+
+                            break;            
+                        default:
+                            break;
+                        }
+                                  
+                }
+            }
+            else
+            {
+                F_lr_predict(0) = F_sum(0) * rleg_com;
+                F_lr_predict(3) = F_sum(0) - F_lr_predict(0);
+                F_lr_predict(1) = F_sum(1) * rleg_com;
+                F_lr_predict(4) = F_sum(1) - F_lr_predict(1);
+                F_lr_predict(2) = F_sum(2) * rleg_com;
+                F_lr_predict(5) = F_sum(2) - F_lr_predict(2);
+
+
+            }
+
+
+
+            ////force:  left-right-leg   
+            for(int j=0; j<6; j++)
+            {
+                //Force_L_R(j)= slow_mpc_gait(15+j) + nt_slow_mpc * (F_lr_predict(j) - slow_mpc_gait(15+j));  //continuous force profile
+                //Force_L_R(j)= slow_mpc_gait(15+j);  //discontinuous force profile
+                Force_L_R(j) = F_lr_predict(j);
+            }                                
+            
+            Dynam.force_distribution(body_p_des,leg_position, Force_L_R, gait_mode, y_offset);
+            
+            FR_torque = Dynam.compute_joint_torques(FR_Jaco,FR_swing,FR_foot_relative_des,FR_foot_relative_mea,
+                                                    FR_v_relative,FR_v_est_relative,0);
+
+            FL_torque = Dynam.compute_joint_torques(FL_Jaco,FL_swing,FL_foot_relative_des,FL_foot_relative_mea,
+                                                    FL_v_relative,FL_v_est_relative,1);
+            
+
+            RR_torque = Dynam.compute_joint_torques(RR_Jaco,RR_swing,RR_foot_relative_des,RR_foot_relative_mea,
+                                                    RR_v_relative,RR_v_est_relative,2);
+
+            RL_torque = Dynam.compute_joint_torques(RL_Jaco,RL_swing,RL_foot_relative_des,RL_foot_relative_mea,
+                                                    RL_v_relative,RL_v_est_relative,3);
+            ///cout << "xxxxxxxxxxxxxxxxx"<<endl;                                        
+            Legs_torque.block<3,1>(0,0) = FR_torque;
+            Legs_torque.block<3,1>(3,0) = FL_torque;
+            Legs_torque.block<3,1>(6,0) = RR_torque;
+            Legs_torque.block<3,1>(9,0) = RL_torque; 
+            
+            Legs_torque(0,0) = butterworthLPF15.filter(FR_torque(0,0));
+            Legs_torque(1,0) = butterworthLPF16.filter(FR_torque(1,0));
+            Legs_torque(2,0) = butterworthLPF17.filter(FR_torque(2,0));
+            Legs_torque(3,0) = butterworthLPF18.filter(FL_torque(0,0));
+            Legs_torque(4,0) = butterworthLPF19.filter(FL_torque(1,0));
+            Legs_torque(5,0) = butterworthLPF20.filter(FL_torque(2,0));
+            Legs_torque(6,0) = butterworthLPF21.filter(RR_torque(0,0));
+            Legs_torque(7,0) = butterworthLPF22.filter(RR_torque(1,0));
+            Legs_torque(8,0) = butterworthLPF23.filter(RR_torque(2,0));
+            Legs_torque(9,0) = butterworthLPF24.filter(RL_torque(0,0));
+            Legs_torque(10,0) = butterworthLPF25.filter(RL_torque(1,0));
+            Legs_torque(11,0) = butterworthLPF26.filter(RL_torque(2,0));
+
+
+
+            if (control_mode == "position")
+            {
+                // desired angle: generatee by inverse kinematics
+                lowCmd.motorCmd[0].q = FR_angle_des(0,0);
+                lowCmd.motorCmd[1].q = FR_angle_des(1,0);
+                lowCmd.motorCmd[2].q = FR_angle_des(2,0);
+                lowCmd.motorCmd[3].q = FL_angle_des(0,0);
+                lowCmd.motorCmd[4].q = FL_angle_des(1,0);
+                lowCmd.motorCmd[5].q = FL_angle_des(2,0);
+                lowCmd.motorCmd[6].q = RR_angle_des(0,0);
+                lowCmd.motorCmd[7].q = RR_angle_des(1,0);
+                lowCmd.motorCmd[8].q = RR_angle_des(2,0); 
+                lowCmd.motorCmd[9].q = RL_angle_des(0,0);
+                lowCmd.motorCmd[10].q = RL_angle_des(1,0);
+                lowCmd.motorCmd[11].q = RL_angle_des(2,0); 
+            }
+            else
+            {
+                // desired angle: generatee by inverse kinematics
+                lowCmd.motorCmd[0].q = FR_angle_des(0,0);
+                lowCmd.motorCmd[1].q = FR_angle_des(1,0);
+                lowCmd.motorCmd[2].q = FR_angle_des(2,0);
+                lowCmd.motorCmd[3].q = FL_angle_des(0,0);
+                lowCmd.motorCmd[4].q = FL_angle_des(1,0);
+                lowCmd.motorCmd[5].q = FL_angle_des(2,0);
+                lowCmd.motorCmd[6].q = RR_angle_des(0,0);
+                lowCmd.motorCmd[7].q = RR_angle_des(1,0);
+                lowCmd.motorCmd[8].q = RR_angle_des(2,0); 
+                lowCmd.motorCmd[9].q = RL_angle_des(0,0);
+                lowCmd.motorCmd[10].q = RL_angle_des(1,0);
+                lowCmd.motorCmd[11].q = RL_angle_des(2,0);                 
+            }
+            if (bjx1>=4)
+            {
+                for (int i = 0; i < 12; i++) 
+                {
+                    lowCmd.motorCmd[i].mode = 0x0A;
+                    lowCmd.motorCmd[i].q = 0;
+                    lowCmd.motorCmd[i].dq = 0;
+                    lowCmd.motorCmd[i].Kp = 0;
+                    lowCmd.motorCmd[i].Kd = 0;
+                    lowCmd.motorCmd[i].tau = Legs_torque(i);
+                }
+            }
+
+
+
         }
 
         ////////////////////////////////////////////////////////////////////////
@@ -911,8 +1260,24 @@ int main(int argc, char **argv)
             servo_pub[m].publish(lowCmd.motorCmd[m]);
         } 
 
+
+        FR_foot_relative_des_old = FR_foot_relative_des;
+        FL_foot_relative_des_old = FL_foot_relative_des;
+        RR_foot_relative_des_old = RR_foot_relative_des;
+        RL_foot_relative_des_old = RL_foot_relative_des;
+
+        FR_foot_relative_mea_old = FR_foot_relative_mea;
+        FL_foot_relative_mea_old = FL_foot_relative_mea;
+        RR_foot_relative_mea_old = RR_foot_relative_mea;
+        RL_foot_relative_mea_old = RL_foot_relative_mea;
+
+        com_des_pre[0] = com_des[0];
+        com_des_pre[1] = com_des[1];
+        com_des_pre[2] = com_des[2];
+
          ///********************* data saving ************************************///////
         joint2simulation.header.stamp = ros::Time::now();
+        joint2simulationx.header.stamp = ros::Time::now();
         for(int j=0; j<12; j++){
                 joint2simulation.position[j] = lowCmd.motorCmd[j].q; // desired joint angles; 
         }
@@ -964,11 +1329,64 @@ int main(int argc, char **argv)
         for(int j=0; j<3; j++)
         {
             joint2simulation.position[51+j] = body_r_des(j,0);   // desired body ori;
-        }                                   
+        }
+
+        /// body_R_des
+        for(int j=0; j<3; j++)
+        {
+            joint2simulation.position[51+j] = body_r_des(j,0);   // desired body ori;
+        }        
+
+        /// force and torque distribution//// calculated by qp or MPC, this work proposes close-form solution
+        // for(int j=0; j<12; j++)
+        // {
+        //     joint2simulation.position[54+j] = slow_mpc_gait(15+j);  // desired force and momentum;
+        // } 
+        for(int j=0; j<6; j++)
+        {
+            joint2simulation.position[54+j] = Force_L_R(j);  // desired force;
+        }
+
+
+        // FR force
+        for(int j=0; j<3; j++)
+        {
+            joint2simulation.position[66+j] = Dynam.F_leg_ref(j,0); 
+        }
+
+        // FL force
+        for(int j=0; j<3; j++)
+        {
+            joint2simulation.position[69+j] = Dynam.F_leg_ref(j,1);
+        } 
+
+        // RR force
+        for(int j=0; j<3; j++)
+        {
+            joint2simulation.position[72+j] = Dynam.F_leg_ref(j,2); 
+        }  
+
+        // RL force
+        for(int j=0; j<3; j++)
+        {
+            joint2simulation.position[75+j] = Dynam.F_leg_ref(j,3);
+        }                                
+
+        // joint torque desired 
+        for(int j=0; j<12; j++)
+        {
+            joint2simulation.position[78+j] = Legs_torque(j);
+        }
+        
+        //// 
+        for(int j=0; j<12; j++)
+        {
+            joint2simulationx.position[j] = lowState.motorState[j].tauEst;
+        }        
 
 
         gait_data_pub.publish(joint2simulation);
-
+        gait_data_pubx.publish(joint2simulationx);
         
         
         ros::spinOnce();

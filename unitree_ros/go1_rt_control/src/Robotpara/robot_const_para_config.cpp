@@ -48,7 +48,7 @@ namespace gait {
     const double _g = 9.8;
 
 //ros system constant
-    const double t_program_cyclic = 0.001;  //program running time period
+    const double t_program_cyclic = 0.005;  //program running time period
 
 //Robot model
     const int LegMotorNumber = 12;

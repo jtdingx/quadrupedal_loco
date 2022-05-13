@@ -852,6 +852,9 @@ Eigen::Matrix<double, 38, 1> NLPClass::step_timing_opti_loop(int i,Eigen::Matrix
         _dcmx_real(0,i+jxx-1) = _comx(0,i+jxx-1) + _comvx(0,i+jxx-1) * sqrt((_comz(0,i+jxx-1) - _Zsc(i+jxx-1))/(_comaz(0,i+jxx-1)+_ggg(0)));
         _dcmy_real(0,i+jxx-1) = _comy(0,i+jxx-1) + _comvy(0,i+jxx-1) * sqrt((_comz(0,i+jxx-1) - _Zsc(i+jxx-1))/(_comaz(0,i+jxx-1)+_ggg(0)));      
     }
+
+    _ZMPxy_realx(0) = _zmpx_real(0,i);
+    _ZMPxy_realx(1) = _zmpy_real(0,i);
    
    
    
@@ -908,23 +911,7 @@ Eigen::Matrix<double, 38, 1> NLPClass::step_timing_opti_loop(int i,Eigen::Matrix
 //     _lamda_comvy = 0.001;            
 //   }  
   
-/*  /// for dt = 0.025: forward push recovery
-  if (_periond_i>2)   
-  {
-    _lamda_comx = 0.0015;     
-    _lamda_comvx = 0.0001;           
-    _lamda_comy = 0.025;
-    _lamda_comvy = 0.001;            
-  } */  
 
-  // /// for dt = 0.025: ball hit when stepping in place
-  // if (_periond_i>2)   
-  // {
-  //   _lamda_comx = 0.35;   
-  //   _lamda_comvx = 0.005;        
-  //   _lamda_comy = 0.02;   
-  //   _lamda_comvy = 0.001;          
-  // }  
   
   _comx_feed(i)  = ((1-_lamda_comx)*(_comx(i)-_px(i))+(_lamda_comx)*estimated_state(0,0))+_px(i);    
   _comvx_feed(i) =  (1-_lamda_comvx)*_comvx(i) + (_lamda_comvx)*estimated_state(1,0);
@@ -1000,7 +987,15 @@ Eigen::Matrix<double, 38, 1> NLPClass::step_timing_opti_loop(int i,Eigen::Matrix
   
   com_traj(36) = _Lxx_ref_real(i);
   com_traj(37) = _Lyy_ref_real(i);
-  
+
+
+  _comxyzx(0) = _comx(0,i);
+  _comxyzx(1) = _comy(0,i);
+  _comxyzx(2) = _comz(0,i);
+
+  _comaxyzx(0) = _comax(0,i);
+  _comaxyzx(1) = _comay(0,i);
+  _comaxyzx(2) = _comaz(0,i);  
   
   return com_traj;
 }
@@ -2582,6 +2577,15 @@ Eigen::Matrix<double,6,1> NLPClass::XGetSolution_Foot_position_KMP(int walktime,
   com_inte(4) = _Lfooty_kmp(walktime);
   com_inte(5) = _Lfootz_kmp(walktime);
 
+  _Lfootxyzx(0) = _Lfootx_kmp(walktime);
+  _Lfootxyzx(1) = _Lfooty_kmp(walktime);
+  _Lfootxyzx(2) = _Lfootz_kmp(walktime);
+
+  _Rfootxyzx(0) = _Rfootx_kmp(walktime);
+  _Rfootxyzx(1) = _Rfooty_kmp(walktime);
+  _Rfootxyzx(2) = _Rfootz_kmp(walktime);
+
+
   return com_inte;
 
 }
@@ -2765,6 +2769,15 @@ Eigen::Matrix<double,6,1> NLPClass::XGetSolution_Foot_position_KMP_faster(int wa
   com_inte(3) = _Lfootx_kmp(walktime);
   com_inte(4) = _Lfooty_kmp(walktime);
   com_inte(5) = _Lfootz_kmp(walktime);
+
+  _Lfootxyzx(0) = _Lfootx_kmp(walktime);
+  _Lfootxyzx(1) = _Lfooty_kmp(walktime);
+  _Lfootxyzx(2) = _Lfootz_kmp(walktime);
+
+  _Rfootxyzx(0) = _Rfootx_kmp(walktime);
+  _Rfootxyzx(1) = _Rfooty_kmp(walktime);
+  _Rfootxyzx(2) = _Rfootz_kmp(walktime);
+
 
   return com_inte;
 
@@ -3714,59 +3727,7 @@ void NLPClass::Force_torque_calculate(Vector3d comxyzx1,Vector3d comaxyzx1,Vecto
 
 void NLPClass::File_wl_steptiming()
 {
-/*        Eigen::MatrixXd CoM_ZMP_foot;
-	CoM_ZMP_foot.setZero(24,_comx.cols());
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(0, 0,1,_comx.cols()) = _px;
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(1, 0,1,_comx.cols()) = _py;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(2, 0,1,_comx.cols()) = _pz;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(3, 0,1,_comx.cols()) = _comx;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(4, 0,1,_comx.cols()) = _comy;
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(5, 0,1,_comx.cols()) = _comvx;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(6, 0,1,_comx.cols()) = _comvy;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(7, 0,1,_comx.cols()) = _comz;
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(8, 0,1,_comx.cols()) = _comvz;
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(9, 0,1,_comx.cols()) = _comx_feed;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(10, 0,1,_comx.cols()) = _comy_feed;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(11, 0,1,_comx.cols()) = _comvx_feed;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(12, 0,1,_comx.cols()) = _comvy_feed;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(13, 0,1,_comx.cols()) = _comax_feed;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(14, 0,1,_comx.cols()) = _comay_feed;
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(15, 0,1,_comx.cols()) = _Lxx_ref_real;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(16, 0,1,_comx.cols()) = _Lyy_ref_real;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(17, 0,1,_comx.cols()) = _Ts_ref_real;
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(18, 0,1,_comx.cols()) = _Lfootx;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(19, 0,1,_comx.cols()) = _Lfooty;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(20, 0,1,_comx.cols()) = _Lfootz;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(21, 0,1,_comx.cols()) = _Rfootx;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(22, 0,1,_comx.cols()) = _Rfooty;	
-	CoM_ZMP_foot.block< Dynamic, Dynamic>(23, 0,1,_comx.cols()) = _Rfootz;	*/	
-  
-// 	std::string fileName = "C++_NP_step_timing_runtime.txt" ;
-// 	std::ofstream outfile( fileName.c_str() ) ; // file name and the operation type. 
-//        
-//         for(int i=0; i<_tcpu.rows(); i++){
-//            for(int j=0; j<_tcpu.cols(); j++){
-//                  outfile << (double) _tcpu(i,j) << " " ; 
-//            }
-//            outfile << std::endl;       // a   newline
-//         }
-//         outfile.close();
-// 		
-// 
-// 
-// 	std::string fileName1 = "C++_NP_3robut3_optimal_trajectory.txt" ;
-// 	std::ofstream outfile1( fileName1.c_str() ) ; // file name and the operation type.        
-// 	
-//         for(int i=0; i<CoM_ZMP_foot.rows(); i++){
-//            for(int j=0; j<CoM_ZMP_foot.cols(); j++){
-//                  outfile1 << (double) CoM_ZMP_foot(i,j) << " " ; 
-//            }
-//            outfile1 << std::endl;       // a   newline
-//         }
-//         outfile1.close();	
-// 	
-//   
-//   
+ 
 }
 
 
