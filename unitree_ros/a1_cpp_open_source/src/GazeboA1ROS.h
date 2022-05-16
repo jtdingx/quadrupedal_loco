@@ -105,6 +105,9 @@ private:
     ros::Subscriber sub_joint_msg[12];
     ros::Publisher pub_euler_d;
 
+    ros::Publisher gait_data_pub; // for data_analysis
+    ros::Publisher gait_data_pubx;
+
     // 0, 1, 2, 3: FL, FR, RL, RR
     ros::Subscriber sub_foot_contact_msg[4];
     ros::Subscriber sub_gt_pose_msg;
@@ -167,6 +170,16 @@ private:
     MovingWindowFilter quat_x;
     MovingWindowFilter quat_y;
     MovingWindowFilter quat_z;
+
+
+
+
+    ////// state publisher
+    sensor_msgs::JointState joint2simulation;
+    sensor_msgs::JointState joint2simulationx;
+
+    Eigen::Matrix<double, 12, 1> joint_torque;
+    Eigen::Matrix<double, 12, 1> Legs_torque_cmd;
 };
 
 

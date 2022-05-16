@@ -1242,16 +1242,13 @@ int main(int argc, char **argv)
                 for (int i = 0; i < 12; i++) 
                 {
                     lowCmd.motorCmd[i].mode = 0x0A;
-                    lowCmd.motorCmd[i].q = 0;
-                    lowCmd.motorCmd[i].dq = 0;
+                    lowCmd.motorCmd[i].q = PosStopF;
+                    lowCmd.motorCmd[i].dq = VelStopF;
                     lowCmd.motorCmd[i].Kp = 0;
                     lowCmd.motorCmd[i].Kd = 0;
                     lowCmd.motorCmd[i].tau = Legs_torque(i);
                 }
             }
-
-
-
         }
 
         ////////////////////////////////////////////////////////////////////////

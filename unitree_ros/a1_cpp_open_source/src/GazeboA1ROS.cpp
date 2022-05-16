@@ -26,6 +26,9 @@ GazeboA1ROS::GazeboA1ROS(ros::NodeHandle &_nh) {
     pub_joint_cmd[10] = nh.advertise<unitree_legged_msgs::MotorCmd>("/a1_gazebo/RR_thigh_controller/command", 1);
     pub_joint_cmd[11] = nh.advertise<unitree_legged_msgs::MotorCmd>("/a1_gazebo/RR_calf_controller/command", 1);
 
+    gait_data_pub = nh.advertise<sensor_msgs::JointState>("go1_gait_data",10);
+    gait_data_pubx = nh.advertise<sensor_msgs::JointState>("go1_gait_datax",10);    
+
     // debug estimation
     pub_estimated_pose = nh.advertise<nav_msgs::Odometry>("/gazebo_a1/estimation_body_pose", 100);
 
@@ -108,6 +111,15 @@ GazeboA1ROS::GazeboA1ROS(ros::NodeHandle &_nh) {
     quat_x = MovingWindowFilter(5);
     quat_y = MovingWindowFilter(5);
     quat_z = MovingWindowFilter(5);
+
+
+    joint2simulation.position.resize(100);
+    joint2simulationx.position.resize(100);
+
+    Legs_torque_cmd.setZero();
+    joint_torque.setZero();
+
+
 }
 
 bool GazeboA1ROS::update_foot_forces_grf(double dt) {
@@ -208,6 +220,12 @@ bool GazeboA1ROS::main_update(double t, double dt) {
 
     pub_estimated_pose.publish(estimate_odom);
 
+
+    joint2simulation.header.stamp = ros::Time::now();
+    joint2simulationx.header.stamp = ros::Time::now();   
+
+
+
     return true;
 }
 
@@ -223,11 +241,42 @@ bool GazeboA1ROS::send_cmd() {
         low_cmd.motorCmd[i].mode = 0x0A;
         low_cmd.motorCmd[i].q = 0;
         low_cmd.motorCmd[i].dq = 0;
-        low_cmd.motorCmd[i].Kp = 0;
-        low_cmd.motorCmd[i].Kd = 0;
+        // low_cmd.motorCmd[i].Kp = 0;
+        // low_cmd.motorCmd[i].Kd = 0;
         low_cmd.motorCmd[i].tau = a1_ctrl_states.joint_torques(i, 0);
         pub_joint_cmd[i].publish(low_cmd.motorCmd[i]);
     }
+    
+
+    ///adjust the order:
+    Legs_torque_cmd(0) = low_cmd.motorCmd[3].tau;
+    Legs_torque_cmd(1) = low_cmd.motorCmd[4].tau;
+    Legs_torque_cmd(2) = low_cmd.motorCmd[5].tau;
+    Legs_torque_cmd(3) = low_cmd.motorCmd[0].tau;
+    Legs_torque_cmd(4) = low_cmd.motorCmd[1].tau;
+    Legs_torque_cmd(5) = low_cmd.motorCmd[2].tau;
+    Legs_torque_cmd(9) = low_cmd.motorCmd[9].tau;
+    Legs_torque_cmd(10) = low_cmd.motorCmd[10].tau;
+    Legs_torque_cmd(11) = low_cmd.motorCmd[11].tau;
+    Legs_torque_cmd(6) = low_cmd.motorCmd[6].tau;
+    Legs_torque_cmd(7) = low_cmd.motorCmd[7].tau;
+    Legs_torque_cmd(8) = low_cmd.motorCmd[8].tau;    
+
+    // joint torque desired 
+    for(int j=0; j<12; j++)
+    {
+        joint2simulation.position[78+j] = Legs_torque_cmd(j);
+    }
+    
+    //// measure joint torque
+    for(int j=0; j<12; j++)
+    {
+        joint2simulationx.position[j] = joint_torque[j];
+    } 
+
+    gait_data_pub.publish(joint2simulation);
+    gait_data_pubx.publish(joint2simulationx);    
+
 
     return true;
 }
@@ -304,64 +353,76 @@ void GazeboA1ROS::imu_callback(const sensor_msgs::Imu::ConstPtr &imu) {
 void GazeboA1ROS::FL_hip_state_callback(const unitree_legged_msgs::MotorState &a1_joint_state) {
     a1_ctrl_states.joint_pos[0] = a1_joint_state.q;
     a1_ctrl_states.joint_vel[0] = a1_joint_state.dq;
+    joint_torque[3] = a1_joint_state.tauEst;
 }
 
 void GazeboA1ROS::FL_thigh_state_callback(const unitree_legged_msgs::MotorState &a1_joint_state) {
     a1_ctrl_states.joint_pos[1] = a1_joint_state.q;
     a1_ctrl_states.joint_vel[1] = a1_joint_state.dq;
+    joint_torque[4] = a1_joint_state.tauEst;
 }
 
 void GazeboA1ROS::FL_calf_state_callback(const unitree_legged_msgs::MotorState &a1_joint_state) {
     a1_ctrl_states.joint_pos[2] = a1_joint_state.q;
     a1_ctrl_states.joint_vel[2] = a1_joint_state.dq;
+    joint_torque[5] = a1_joint_state.tauEst;
 }
 
 // FR
 void GazeboA1ROS::FR_hip_state_callback(const unitree_legged_msgs::MotorState &a1_joint_state) {
     a1_ctrl_states.joint_pos[3] = a1_joint_state.q;
     a1_ctrl_states.joint_vel[3] = a1_joint_state.dq;
+    joint_torque[0] = a1_joint_state.tauEst;
 }
 
 void GazeboA1ROS::FR_thigh_state_callback(const unitree_legged_msgs::MotorState &a1_joint_state) {
     a1_ctrl_states.joint_pos[4] = a1_joint_state.q;
     a1_ctrl_states.joint_vel[4] = a1_joint_state.dq;
+    joint_torque[1] = a1_joint_state.tauEst;
 }
 
 void GazeboA1ROS::FR_calf_state_callback(const unitree_legged_msgs::MotorState &a1_joint_state) {
     a1_ctrl_states.joint_pos[5] = a1_joint_state.q;
     a1_ctrl_states.joint_vel[5] = a1_joint_state.dq;
+    joint_torque[2] = a1_joint_state.tauEst;
 }
 
 // RL
 void GazeboA1ROS::RL_hip_state_callback(const unitree_legged_msgs::MotorState &a1_joint_state) {
     a1_ctrl_states.joint_pos[6] = a1_joint_state.q;
     a1_ctrl_states.joint_vel[6] = a1_joint_state.dq;
+    joint_torque[9] = a1_joint_state.tauEst;
 }
 
 void GazeboA1ROS::RL_thigh_state_callback(const unitree_legged_msgs::MotorState &a1_joint_state) {
     a1_ctrl_states.joint_pos[7] = a1_joint_state.q;
     a1_ctrl_states.joint_vel[7] = a1_joint_state.dq;
+    joint_torque[10] = a1_joint_state.tauEst;
 }
 
 void GazeboA1ROS::RL_calf_state_callback(const unitree_legged_msgs::MotorState &a1_joint_state) {
     a1_ctrl_states.joint_pos[8] = a1_joint_state.q;
     a1_ctrl_states.joint_vel[8] = a1_joint_state.dq;
+    joint_torque[11] = a1_joint_state.tauEst;
 }
 
 // RR
 void GazeboA1ROS::RR_hip_state_callback(const unitree_legged_msgs::MotorState &a1_joint_state) {
     a1_ctrl_states.joint_pos[9] = a1_joint_state.q;
     a1_ctrl_states.joint_vel[9] = a1_joint_state.dq;
+    joint_torque[6] = a1_joint_state.tauEst;
 }
 
 void GazeboA1ROS::RR_thigh_state_callback(const unitree_legged_msgs::MotorState &a1_joint_state) {
     a1_ctrl_states.joint_pos[10] = a1_joint_state.q;
     a1_ctrl_states.joint_vel[10] = a1_joint_state.dq;
+    joint_torque[7] = a1_joint_state.tauEst;
 }
 
 void GazeboA1ROS::RR_calf_state_callback(const unitree_legged_msgs::MotorState &a1_joint_state) {
     a1_ctrl_states.joint_pos[11] = a1_joint_state.q;
     a1_ctrl_states.joint_vel[11] = a1_joint_state.dq;
+    joint_torque[8] = a1_joint_state.tauEst;
 }
 
 // foot contact force
