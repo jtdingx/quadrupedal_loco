@@ -16,6 +16,7 @@ int main(int argc, char **argv)
         ROBOT
     };
     coord def_frame = coord::WORLD;
+    //coord def_frame = coord::ROBOT;
 
     ros::init(argc, argv, "move_publisher");
     ros::NodeHandle nh;
@@ -45,7 +46,7 @@ int main(int argc, char **argv)
 
         long long time_ms = 0;  //time, ms
         const double period = 5000; //ms
-        const double radius = 1.5;    //m
+        const double radius = 0.5;    //m
         tf::Quaternion q;
         while(ros::ok())
         {
@@ -60,9 +61,9 @@ int main(int argc, char **argv)
     }
     else if(def_frame == coord::ROBOT)
     {
-        model_state_pub.twist.linear.x= 0.02; //0.02: 2cm/sec
+        model_state_pub.twist.linear.x= 0.00; //0.02: 2cm/sec
         model_state_pub.twist.linear.y= 0.0;
-        model_state_pub.twist.linear.z= 0.08;
+        model_state_pub.twist.linear.z= 0.00;
         
         model_state_pub.twist.angular.x= 0.0;
         model_state_pub.twist.angular.y= 0.0;

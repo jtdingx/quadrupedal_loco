@@ -1190,18 +1190,18 @@ int main(int argc, char **argv)
             Legs_torque.block<3,1>(6,0) = RR_torque;
             Legs_torque.block<3,1>(9,0) = RL_torque; 
             
-            Legs_torque(0,0) = butterworthLPF15.filter(FR_torque(0,0));
-            Legs_torque(1,0) = butterworthLPF16.filter(FR_torque(1,0));
-            Legs_torque(2,0) = butterworthLPF17.filter(FR_torque(2,0));
-            Legs_torque(3,0) = butterworthLPF18.filter(FL_torque(0,0));
-            Legs_torque(4,0) = butterworthLPF19.filter(FL_torque(1,0));
-            Legs_torque(5,0) = butterworthLPF20.filter(FL_torque(2,0));
-            Legs_torque(6,0) = butterworthLPF21.filter(RR_torque(0,0));
-            Legs_torque(7,0) = butterworthLPF22.filter(RR_torque(1,0));
-            Legs_torque(8,0) = butterworthLPF23.filter(RR_torque(2,0));
-            Legs_torque(9,0) = butterworthLPF24.filter(RL_torque(0,0));
-            Legs_torque(10,0) = butterworthLPF25.filter(RL_torque(1,0));
-            Legs_torque(11,0) = butterworthLPF26.filter(RL_torque(2,0));
+            // Legs_torque(0,0) = butterworthLPF15.filter(FR_torque(0,0));
+            // Legs_torque(1,0) = butterworthLPF16.filter(FR_torque(1,0));
+            // Legs_torque(2,0) = butterworthLPF17.filter(FR_torque(2,0));
+            // Legs_torque(3,0) = butterworthLPF18.filter(FL_torque(0,0));
+            // Legs_torque(4,0) = butterworthLPF19.filter(FL_torque(1,0));
+            // Legs_torque(5,0) = butterworthLPF20.filter(FL_torque(2,0));
+            // Legs_torque(6,0) = butterworthLPF21.filter(RR_torque(0,0));
+            // Legs_torque(7,0) = butterworthLPF22.filter(RR_torque(1,0));
+            // Legs_torque(8,0) = butterworthLPF23.filter(RR_torque(2,0));
+            // Legs_torque(9,0) = butterworthLPF24.filter(RL_torque(0,0));
+            // Legs_torque(10,0) = butterworthLPF25.filter(RL_torque(1,0));
+            // Legs_torque(11,0) = butterworthLPF26.filter(RL_torque(2,0));
 
 
 
@@ -1237,18 +1237,18 @@ int main(int argc, char **argv)
                 lowCmd.motorCmd[10].q = RL_angle_des(1,0);
                 lowCmd.motorCmd[11].q = RL_angle_des(2,0);                 
             }
-            if (bjx1>=4)
-            {
-                for (int i = 0; i < 12; i++) 
-                {
-                    lowCmd.motorCmd[i].mode = 0x0A;
-                    lowCmd.motorCmd[i].q = PosStopF;
-                    lowCmd.motorCmd[i].dq = VelStopF;
-                    lowCmd.motorCmd[i].Kp = 0;
-                    lowCmd.motorCmd[i].Kd = 0;
-                    lowCmd.motorCmd[i].tau = Legs_torque(i);
-                }
-            }
+            // if (bjx1>=4)
+            // {
+            //     for (int i = 0; i < 12; i++) 
+            //     {
+            //         lowCmd.motorCmd[i].mode = 0x0A;
+            //         lowCmd.motorCmd[i].q = PosStopF;
+            //         lowCmd.motorCmd[i].dq = VelStopF;
+            //         lowCmd.motorCmd[i].Kp = 0;
+            //         lowCmd.motorCmd[i].Kd = 0;
+            //         lowCmd.motorCmd[i].tau = Legs_torque(i);
+            //     }
+            // }
         }
 
         ////////////////////////////////////////////////////////////////////////

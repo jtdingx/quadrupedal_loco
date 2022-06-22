@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /RobotModel1
         - /Axes1
+        - /TF1
       Splitter Ratio: 0.5
     Tree Height: 1088
   - Class: rviz/Selection
@@ -260,19 +261,151 @@ Visualization Manager:
       Reference Frame: <Fixed Frame>
       Value: false
     - Class: rviz/TF
-      Enabled: false
+      Enabled: true
       Frame Timeout: 15
       Frames:
         All Enabled: true
-      Marker Scale: 1
+        FL_calf:
+          Value: true
+        FL_foot:
+          Value: true
+        FL_hip:
+          Value: true
+        FL_thigh:
+          Value: true
+        FL_thigh_shoulder:
+          Value: true
+        FR_calf:
+          Value: true
+        FR_foot:
+          Value: true
+        FR_hip:
+          Value: true
+        FR_thigh:
+          Value: true
+        FR_thigh_shoulder:
+          Value: true
+        RL_calf:
+          Value: true
+        RL_foot:
+          Value: true
+        RL_hip:
+          Value: true
+        RL_thigh:
+          Value: true
+        RL_thigh_shoulder:
+          Value: true
+        RR_calf:
+          Value: true
+        RR_foot:
+          Value: true
+        RR_hip:
+          Value: true
+        RR_thigh:
+          Value: true
+        RR_thigh_shoulder:
+          Value: true
+        base:
+          Value: true
+        camera_chin:
+          Value: true
+        camera_face:
+          Value: true
+        camera_laserscan_link_left:
+          Value: true
+        camera_laserscan_link_right:
+          Value: true
+        camera_left:
+          Value: true
+        camera_optical_chin:
+          Value: true
+        camera_optical_face:
+          Value: true
+        camera_optical_left:
+          Value: true
+        camera_optical_rearDown:
+          Value: true
+        camera_optical_right:
+          Value: true
+        camera_rearDown:
+          Value: true
+        camera_right:
+          Value: true
+        imu_link:
+          Value: true
+        trunk:
+          Value: true
+        ultraSound_face:
+          Value: true
+        ultraSound_left:
+          Value: true
+        ultraSound_right:
+          Value: true
+      Marker Scale: 0.4000000059604645
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        base:
+          trunk:
+            FL_hip:
+              FL_thigh:
+                FL_calf:
+                  FL_foot:
+                    {}
+              FL_thigh_shoulder:
+                {}
+            FR_hip:
+              FR_thigh:
+                FR_calf:
+                  FR_foot:
+                    {}
+              FR_thigh_shoulder:
+                {}
+            RL_hip:
+              RL_thigh:
+                RL_calf:
+                  RL_foot:
+                    {}
+              RL_thigh_shoulder:
+                {}
+            RR_hip:
+              RR_thigh:
+                RR_calf:
+                  RR_foot:
+                    {}
+              RR_thigh_shoulder:
+                {}
+            camera_chin:
+              camera_optical_chin:
+                {}
+            camera_face:
+              camera_optical_face:
+                {}
+            camera_left:
+              camera_laserscan_link_left:
+                {}
+              camera_optical_left:
+                {}
+            camera_rearDown:
+              camera_optical_rearDown:
+                {}
+            camera_right:
+              camera_laserscan_link_right:
+                {}
+              camera_optical_right:
+                {}
+            imu_link:
+              {}
+            ultraSound_face:
+              {}
+            ultraSound_left:
+              {}
+            ultraSound_right:
+              {}
       Update Interval: 0
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -415,7 +548,7 @@ Visualization Manager:
       Value: false
   Enabled: true
   Global Options:
-    Background Color: 238; 238; 238
+    Background Color: 193; 210; 240
     Default Light: true
     Fixed Frame: base
     Frame Rate: 30
@@ -441,25 +574,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 2.2610645294189453
+      Distance: 2.042206048965454
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.29964715242385864
-        Y: -0.07829883694648743
-        Z: -0.04122250899672508
+        X: 0.09565602242946625
+        Y: -0.03720952942967415
+        Z: -0.07547357678413391
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.38979727029800415
+      Pitch: 0.25979721546173096
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.9485955238342285
+      Yaw: 0.030409719794988632
     Saved: ~
 Window Geometry:
   Displays:
