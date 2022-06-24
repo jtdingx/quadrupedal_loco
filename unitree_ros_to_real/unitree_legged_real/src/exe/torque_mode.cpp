@@ -80,7 +80,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     double Torque_ff = 0;
     double Torque_ff_L = 0;
 
-    double k_spring = 7;
+    double k_spring = 3;
     double k_p_rest = -1.3;
 
     
@@ -90,7 +90,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     float sin_mid_q[3] = {0.0, 1.2, -1.3};
     double sin_joint1, sin_joint2;
 
-    bool FF_enable = false; ///// Befor setting True, make sure the spring is engaged!!!!!!!!!!!!
+    bool FF_enable = true; ///// Befor setting True, make sure the spring is engaged!!!!!!!!!!!!
     
     double torq_kp, torq_kd, torq_ki;
     torq_kp = 0;
@@ -114,19 +114,19 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     if(FF_enable)
     {
         //  feedback plus feedforward
-        torq_kp = 4;
-        torq_kd = 0.015;
-        torq_ki = 000;
+        torq_kp = 7;
+        torq_kd = 0.3;
+        torq_ki = 0.05;
     }
     else
     {
         // // only feedback
-        torq_kp = 10;
+        torq_kp = 8;
         torq_kd = 0.3;
-        torq_ki = 0.06;
+        torq_ki = 0.05;
     }
     double torque_err_intergration = 0;
-    Eigen::Matrix<double, 1000,1> torque_err;
+    Eigen::Matrix<double, 500,1> torque_err;
     torque_err.setZero();
 
 
@@ -198,12 +198,12 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                 }
 
                 //// FR_2
-                torque_err.block<999,1>(0,0) = torque_err.block<999,1>(1,0);
+                torque_err.block<499,1>(0,0) = torque_err.block<499,1>(1,0);
 
-                torque_err(999,0) = qDes[2] - RecvLowROS.motorState[FR_2].q;
+                torque_err(499,0) = qDes[2] - RecvLowROS.motorState[FR_2].q;
 
                 torque_err_intergration = 0;
-                for(int ij=0; ij<1000; ij++)
+                for(int ij=0; ij<500; ij++)
                 {
                    torque_err_intergration += torque_err(ij,0);
                 } 
