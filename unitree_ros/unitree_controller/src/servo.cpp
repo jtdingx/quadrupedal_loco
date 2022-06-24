@@ -18,11 +18,17 @@ Use of this source code is governed by the MPL-2.0 license, see LICENSE.
 #include <math.h>
 #include <nav_msgs/Odometry.h>
 #include "body.h"
+#include "sensor_msgs/JointState.h"
+#include <Eigen/Dense>
+
 
 using namespace std;
 using namespace unitree_model;
 
 bool start_up = true;
+
+sensor_msgs::JointState joint2simulation;
+sensor_msgs::JointState joint2simulationx;
 
 class multiThread
 {
@@ -219,6 +225,17 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
     ros::Publisher lowState_pub; //for rviz visualization
     // ros::Rate loop_rate(1000);
+
+    ros::Publisher gait_data_pub; // for data_analysis
+    ros::Publisher gait_data_pubx;
+
+    joint2simulation.position.resize(100);
+    joint2simulationx.position.resize(100);
+    ros::Rate loop_rate(1000);
+
+
+
+
     // the following nodes have been initialized by "gazebo.launch"
     lowState_pub = n.advertise<unitree_legged_msgs::LowState>("/" + robot_name + "_gazebo/lowState/state", 1);
     servo_pub[0] = n.advertise<unitree_legged_msgs::MotorCmd>("/" + robot_name + "_gazebo/FR_hip_controller/command", 1);
@@ -233,15 +250,98 @@ int main(int argc, char **argv)
     servo_pub[9] = n.advertise<unitree_legged_msgs::MotorCmd>("/" + robot_name + "_gazebo/RL_hip_controller/command", 1);
     servo_pub[10] = n.advertise<unitree_legged_msgs::MotorCmd>("/" + robot_name + "_gazebo/RL_thigh_controller/command", 1);
     servo_pub[11] = n.advertise<unitree_legged_msgs::MotorCmd>("/" + robot_name + "_gazebo/RL_calf_controller/command", 1);
+    gait_data_pub = n.advertise<sensor_msgs::JointState>("go1_gait_data",10);
+    gait_data_pubx = n.advertise<sensor_msgs::JointState>("go1_gait_datax",10);   
 
+
+    int loop_count=1;
+    double duration = 2000.0;
+    Eigen::Matrix<double, 12,1> pos,lastPos, vel, tau, pos_old;
+
+    double T_kd, T_kp, percent;
+    T_kd = 0.01;
+    T_kp = 15;  
+    percent = 0;  
+
+    //paramInit();
     motion_init();
 
+    double targetPos[12] = {0.0, 0.67, -1.3, -0.0, 0.67, -1.3,
+                            0.0, 0.77, -1.0, -0.0, 0.77, -1.0};
+
+    //cout << "xxx"<<endl;
     while (ros::ok()){
         /*
         control logic
         */
         lowState_pub.publish(lowState);
-        sendServoCmd();
+        
+
+        for(int j=0; j<12; j++) lastPos[j] = lowState.motorState[j].q;
+
+        if(loop_count<=duration){
+
+            percent = (double)loop_count/duration;
+        }
+        else
+        {
+            percent = 1;
+        }
+
+        //cout << percent <<endl;
+        for(int j=0; j<12; j++){
+            // lowCmd.motorCmd[j].q = lastPos[j]*(1-percent) + targetPos[j]*percent; 
+            
+            pos[j] = lastPos[j]*(1-percent) + targetPos[j]*percent;
+            if(loop_count==1)
+            {
+               vel[j] = 0;
+            }
+            else
+            {
+               vel[j] = (pos[j] - pos_old[j])/0.001; 
+            }
+            
+            lowCmd.motorCmd[j].tau = T_kp*(pos[j,0] - lowState.motorState[j].q) + T_kd * (vel[j,0] - lowState.motorState[j].dq); 
+            pos_old[j] = pos[j];
+        }
+        //cout << pos_old <<endl;
+
+        lowCmd.motorCmd[0].tau = -0.5f;
+        lowCmd.motorCmd[3].tau = 0.5f;
+        lowCmd.motorCmd[6].tau = -0.5f;
+        lowCmd.motorCmd[9].tau = 0.5f;
+
+
+        //cout << "publisherxxx" <<endl;
+        for(int j=0; j<12; j++)
+        {
+            joint2simulation.position[78+j] = lowCmd.motorCmd[j].tau;
+        }
+
+        //// 
+        for(int j=0; j<12; j++)
+        {
+            joint2simulationx.position[j] = lowState.motorState[j].tauEst;
+        }
+        
+
+
+        gait_data_pub.publish(joint2simulation);
+        gait_data_pubx.publish(joint2simulationx);
+        //cout << "publisher" <<endl;
+
+        for(int m=0; m<12; m++){
+            servo_pub[m].publish(lowCmd.motorCmd[m]);
+        }
+
+        ros::spinOnce();
+
+        loop_rate.sleep();
+
+        loop_count++;
+
+
 
     }
     

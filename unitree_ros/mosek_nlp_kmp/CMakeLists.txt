@@ -49,10 +49,10 @@ set(Robopara_DIRS ${SRC_PATH}/Robotpara)
 
 
 # ### laptop2:mosek 9.0.86: 2019 may: require lower ld: for linux 2014 (walker and laptop)
-INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/9.0/tools/platform/linux64x86/h")
-INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/9.0/tools/platform/linux64x86/include")
-INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/mosek/9.0/tools/platform/linux64x86/bin")
-LINK_DIRECTORIES(/home/jiatao/Documents/mosek/9.0/tools/platform/linux64x86/bin)
+INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/9.3/tools/platform/linux64x86/h")
+INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/9.3/tools/platform/linux64x86/include")
+INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/mosek/9.3/tools/platform/linux64x86/bin")
+LINK_DIRECTORIES(/home/jiatao/Documents/mosek/9.3/tools/platform/linux64x86/bin)
 
 ### laptop2:mosek 9.0.86: 2019 may: for walker_hardware
 # INCLUDE_DIRECTORIES("/home/walker2/mosek_source/mosek/9.0/tools/platform/linux64x86/h")

@@ -79,7 +79,7 @@ void NLPClass::FootStepInputs( double stepwidth, double steplengthx, double step
 void NLPClass::Initialize()
 {
   ///// pvFlag=0:model position, pvFlag=1, model position and velocity
-	//_pvFlag_kmp = 1;			    // output: pos (and vel)
+	_pvFlag_kmp = 1;			    // output: pos (and vel)
     
   _inDim_kmp  = 1; 	      		    //input dimension
 	_outDim_kmp = 3*(_pvFlag_kmp+1); 	      		    //output dimension
@@ -1034,6 +1034,8 @@ int NLPClass::Indexfind(double goalvari, int xyz)
 
       
   }
+
+  return 0;
 
 }
 

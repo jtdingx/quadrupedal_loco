@@ -56,9 +56,9 @@
         <arg name="rname" value="$(arg rname)"/>
     </include>
 
-    <node pkg="mosek_nlp_kmp" type="mosek_nlp_kmp_node" name="mosek_nlp_kmp_node" respawn="false" respawn_delay="1" output="screen">  
-    </node>
+    <!--<node pkg="mosek_nlp_kmp" type="mosek_nlp_kmp_node" name="mosek_nlp_kmp_node" respawn="false" respawn_delay="1" output="screen">  
+    </node> -->
 
-    <node pkg="rt_mpc_qp" type="rt_mpc_node" name="rt_mpc_node" respawn="false" respawn_delay="1" output="screen">  </node>
+    <!--<node pkg="rt_mpc_qp" type="rt_mpc_node" name="rt_mpc_node" respawn="false" respawn_delay="1" output="screen">  </node> -->
 
 </launch>

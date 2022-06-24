@@ -45,7 +45,7 @@ public:
 	virtual ~NLPClass() {};
 	
 	/******************* KMP class preparation **************/
-        kmp kmp_leg_L;
+    kmp kmp_leg_L;
 	kmp kmp_leg_R;
 
 	int    _inDim_kmp; 	      		    //input dimension
