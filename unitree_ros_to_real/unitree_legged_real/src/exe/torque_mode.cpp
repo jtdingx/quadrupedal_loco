@@ -11,6 +11,7 @@ Use of this source code is governed by the MPL-2.0 license, see LICENSE.
 #include <unitree_legged_msgs/LowState.h>
 #include "convert.h"
 #include "sensor_msgs/JointState.h"
+#include <Eigen/Dense>
 
 using namespace UNITREE_LEGGED_SDK;
 
@@ -58,6 +59,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     long motiontime=0;
     float torque = 0;
+    float torque_L = 0;
+
     TCmd SendLowLCM = {0};
     TState RecvLowLCM = {0};
     unitree_legged_msgs::LowCmd SendLowROS;
@@ -75,6 +78,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     float qInit[3]={0};
 
     double Torque_ff = 0;
+    double Torque_ff_L = 0;
+
     double k_spring = 7;
     double k_p_rest = -1.3;
 
@@ -82,29 +87,47 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     ////first configure
     // float sin_mid_q[3] = {0.0, 1.2, -2.0};
     ////second configure
-    float sin_mid_q[3] = {0.0, 1.2, -1.2};
+    float sin_mid_q[3] = {0.0, 1.2, -1.3};
     double sin_joint1, sin_joint2;
 
     bool FF_enable = false; ///// Befor setting True, make sure the spring is engaged!!!!!!!!!!!!
     
-    double torq_kp, torq_kd;
+    double torq_kp, torq_kd, torq_ki;
     torq_kp = 0;
     torq_kd = 0;
+    torq_ki = 0;
+    ////500 Hz
+    // if(FF_enable)
+    // {
+    //     //  feedback plus feedforward
+    //     torq_kp = 8;
+    //     torq_kd = 0.05;
+    // }
+    // else
+    // {
+    //     // // only feedback
+    //     torq_kp = 12;
+    //     torq_kd = 0.25;
+    // }
 
+    ////// 1K hz 
     if(FF_enable)
     {
         //  feedback plus feedforward
-        torq_kp = 8;
-        torq_kd = 0.05;
+        torq_kp = 4;
+        torq_kd = 0.015;
+        torq_ki = 000;
     }
     else
     {
         // // only feedback
-        torq_kp = 12;
-        torq_kd = 0.25;
+        torq_kp = 10;
+        torq_kd = 0.3;
+        torq_ki = 0.06;
     }
-
-
+    double torque_err_intergration = 0;
+    Eigen::Matrix<double, 1000,1> torque_err;
+    torque_err.setZero();
 
 
     roslcm.SubscribeState();
@@ -174,8 +197,18 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                     qDes[2]=go1_Calf_max;
                 }
 
-            // if( motiontime >= 500){
-                torque = (qDes[2] - RecvLowROS.motorState[FR_2].q)*torq_kp + (0 - RecvLowROS.motorState[FR_2].dq)*torq_kd;
+                //// FR_2
+                torque_err.block<999,1>(0,0) = torque_err.block<999,1>(1,0);
+
+                torque_err(999,0) = qDes[2] - RecvLowROS.motorState[FR_2].q;
+
+                torque_err_intergration = 0;
+                for(int ij=0; ij<1000; ij++)
+                {
+                   torque_err_intergration += torque_err(ij,0);
+                } 
+                 
+                torque = (qDes[2] - RecvLowROS.motorState[FR_2].q)*torq_kp + (0 - RecvLowROS.motorState[FR_2].dq)*torq_kd + torque_err_intergration*torq_ki;
                 
                 if(qDes[2]<=k_p_rest)
                 {
@@ -191,16 +224,47 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                     torque += Torque_ff;
                 }
                 
+                //// FL_2
+                torque_L = (qDes[2] - RecvLowROS.motorState[FL_2].q)*torq_kp + (0 - RecvLowROS.motorState[FL_2].dq)*torq_kd;
+                
+                if(qDes[2]<=k_p_rest)
+                {
+                    Torque_ff_L = k_spring * (qDes[2] - (k_p_rest));
+                }
+                else
+                {
+                    Torque_ff_L = 0;
+                }
+                
+                if(FF_enable)
+                {
+                    torque_L += Torque_ff_L;
+                }
 
-                if(torque > 5.0f) torque = 5.0f;
-                if(torque < -5.0f) torque = -5.0f;
+
+
+                if(torque > 3.0f) torque = 3.0f;
+                if(torque < -3.0f) torque = -3.0f;
+
+                if(torque_L > 3.0f) torque_L = 3.0f;
+                if(torque_L < -3.0f) torque_L = -3.0f;
+
 
                 SendLowROS.motorCmd[FR_2].q = PosStopF;
                 SendLowROS.motorCmd[FR_2].dq = VelStopF;
                 SendLowROS.motorCmd[FR_2].Kp = 0;
                 SendLowROS.motorCmd[FR_2].Kd = 0;
                 SendLowROS.motorCmd[FR_2].tau = torque;
-            // }
+
+
+
+
+                // SendLowROS.motorCmd[FL_2].q = PosStopF;
+                // SendLowROS.motorCmd[FL_2].dq = VelStopF;
+                // SendLowROS.motorCmd[FL_2].Kp = 0;
+                // SendLowROS.motorCmd[FL_2].Kd = 0;
+                // SendLowROS.motorCmd[FL_2].tau = torque_L;
+
 
             }
 
@@ -209,13 +273,14 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
         }
 
+
         ///********************* data saving ************************************///////
         joint2simulation.header.stamp = ros::Time::now();
         joint2simulationx.header.stamp = ros::Time::now();
         ////
         for(int j=0; j<12; j++){
                 joint2simulation.position[j] = SendLowROS.motorCmd[j].q; // desired joint angles; 
-                if(j==2)
+                if((j==2)||(j==5))
                 {
                     joint2simulation.position[j] = qDes[2]; // desired joint angles; 
                 }
@@ -237,15 +302,21 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         {
             joint2simulationx.position[j] = RecvLowROS.motorState[j].tauEst;
         }
+        
+        /////// measured current
+        for(int j=0; j<12; j++)
+        {
+            joint2simulationx.position[12+j] = RecvLowROS.motorState[j].tauEst;
+        }        
 
         joint2simulationx.position[12] = Torque_ff;
 
         gait_data_pub.publish(joint2simulation);
         gait_data_pubx.publish(joint2simulationx);
 
-        // /////sending command ////////////
-        // SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
-        // roslcm.Send(SendLowLCM);
+        /////sending command ////////////
+        SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
+        roslcm.Send(SendLowLCM);
 
         ros::spinOnce();
         loop_rate.sleep();

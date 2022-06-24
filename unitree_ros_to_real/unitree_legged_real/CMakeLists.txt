@@ -19,6 +19,11 @@ include_directories(
 
 set(CMAKE_CXX_FLAGS "-O3")
 
+FIND_PACKAGE(Eigen3 REQUIRED)
+INCLUDE_DIRECTORIES(${EIGEN3_INCLUDE_DIR})
+MESSAGE(STATUS "EIGEN3_INCLUDE_DIR: ${EIGEN3_INCLUDE_DIR}")
+
+
 include_directories(/home/pi/go1_catkin/src/unitree_legged_sdk/include)
 link_directories(/home/pi/go1_catkin/src/unitree_legged_sdk/lib)
 string(CONCAT LEGGED_SDK_NAME libunitree_legged_sdk_arm64.so)
