@@ -269,7 +269,11 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                 {
                     Torque_ff(FR_0,0) = 0;
                 }
-
+ 
+                if(FF_enable)
+                {
+                    torque(FR_0,0) += Torque_ff(FR_0,0);
+                }  
 
                 //// FR_1 joint tracking
                 torque_err.block<499,1>(0,FR_1) = torque_err.block<499,1>(1,FR_1);
@@ -292,7 +296,11 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                 {
                     Torque_ff(FR_1,0) = 0;
                 }
-                
+ 
+                if(FF_enable)
+                {
+                    torque(FR_1,0) += Torque_ff(FR_1,0);
+                }               
 
                 //// FR_2 joint tracking
                 torque_err.block<499,1>(0,FR_2) = torque_err.block<499,1>(1,FR_2);
@@ -317,15 +325,14 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                 }
                 
 
-
-
-
-                
                 if(FF_enable)
                 {
                     torque(FR_2,0) += Torque_ff(FR_2,0);
                 }
                 
+
+
+
                 //// FL_2 joint
                 torque(FL_2,0) = (qDes[2] - RecvLowROS.motorState[FL_2].q)*torq_kp_calf + (0 - RecvLowROS.motorState[FL_2].dq)*torq_kd_calf;
                 
@@ -343,6 +350,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                     torque(FL_2,0) += Torque_ff(FL_2,0);
                 }
 
+                if(torque(FR_0,0) > 3.0f) torque(FR_0,0) = 3.0f;
+                if(torque(FR_0,0) < -3.0f) torque(FR_0,0) = -3.0f;
 
                 if(torque(FR_1,0) > 3.0f) torque(FR_1,0) = 3.0f;
                 if(torque(FR_1,0) < -3.0f) torque(FR_1,0) = -3.0f;
