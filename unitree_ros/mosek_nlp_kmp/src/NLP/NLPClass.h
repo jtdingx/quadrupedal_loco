@@ -107,6 +107,7 @@ public:
 	
 	
 	int _bjx1, _bjx2, _mx;	
+	int right_support;
 	
 	int _j_count;
 	

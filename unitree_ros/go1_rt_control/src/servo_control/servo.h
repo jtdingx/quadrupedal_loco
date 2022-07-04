@@ -83,7 +83,7 @@ Eigen::Vector3d root_acc;
 
 /////////////////////////////////////////************* Force distribution **********************/////////////////////////////////////////
 ////// Force distribution 
-Eigen::Vector3d F_sum;
+Eigen::Matrix<double,6,1> F_sum;
 Eigen::Matrix3d Momentum_sum;
 
 double rleg_com, lleg_com;
@@ -91,6 +91,7 @@ Eigen::Matrix<double,6,1> F_lr_predict;
 bool FR_swing,FL_swing,RR_swing,RL_swing;
 
 int bjx1;
+int right_support;
 Eigen::Matrix<double, 3,1>  FR_torque,FL_torque,RR_torque,RL_torque;
 Eigen::Matrix<double, 12,1> Legs_torque;
 
@@ -124,6 +125,7 @@ double lfoot_des[3];
 double rfoot_theta_des[3];
 double lfoot_theta_des[3];
 double theta_des[3];
+double thetaacc_des[3];
 double theta_des_pre[3];	
 double rfoot_pose_sensor[3];
 double lfoot_pose_sensor[3];

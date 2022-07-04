@@ -161,7 +161,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
 
 
-     gait_mode = 102;
+    gait_mode = 102;
     x_offset = 0.01;
 
     if (gait_mode ==101) ///bipedal
@@ -185,7 +185,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     FR_angle_des.setZero(); FL_angle_des.setZero(); RR_angle_des.setZero(); RL_angle_des.setZero(); 
 
     angle_des.setZero();
-    
+
     //measure angles
     FR_angle_mea.setZero(); FL_angle_mea.setZero(); RR_angle_mea.setZero(); RL_angle_mea.setZero();
     FR_dq_mea.setZero();    FL_dq_mea.setZero();    RR_dq_mea.setZero();    RL_dq_mea.setZero();

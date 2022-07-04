@@ -102,7 +102,9 @@ public:
     
     Matrix<double,18,1> mpc_rlfoot_traj; 
     Matrix<double,38,1> mpc_body; 
-    Eigen::Matrix<double,9,1> CoM_squat;    
+    Eigen::Matrix<double,9,1> CoM_squat;  
+
+	int right_support;  
     
     
 protected:

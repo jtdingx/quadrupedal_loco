@@ -74,7 +74,9 @@ add_executable(go1_servo
                src/kinematics/Kinematics.cpp
                src/Robotpara/robot_const_para_config.cpp
                src/whole_body_dynamics/dynmics_compute.cpp
-               src/utils/Utils.cpp)
+               src/utils/Utils.cpp
+               src/utils/EiQuadProg/EiQuadProg.cpp
+               src/QP/QPBaseClass.cpp)
 
 target_link_libraries(go1_servo 
                       ${PROJECT_NAME} ${catkin_LIBRARIES})
