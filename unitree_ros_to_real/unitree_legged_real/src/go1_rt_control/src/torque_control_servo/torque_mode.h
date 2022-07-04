@@ -17,12 +17,12 @@ Use of this source code is governed by the MPL-2.0 license, see LICENSE.
 using namespace UNITREE_LEGGED_SDK;
 
 
-
+const int torque_err_row = 500;
 ////// initial parameters for joint-tracking
 double torq_kp_calf, torq_kd_calf, torq_ki_calf;
 double torq_kp_thigh, torq_kd_thigh, torq_ki_thigh;
 double torq_kp_hip, torq_kd_hip, torq_ki_hip;
-Eigen::Matrix<double, 500,12> torque_err;
+Eigen::Matrix<double, torque_err_row,12> torque_err;
 Eigen::Matrix<double, 12,1>  torque_err_intergration;
 Eigen::Matrix<double, 12,1> Torque_ff; 
 
