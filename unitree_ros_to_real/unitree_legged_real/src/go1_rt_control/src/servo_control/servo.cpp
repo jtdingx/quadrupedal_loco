@@ -230,7 +230,7 @@ public:
 	{
 	    slow_mpc_gait(jx) = msg->position[jx]; 
 	}
-	    mpc_gait_flag = slow_mpc_gait(99);
+	    // mpc_gait_flag = slow_mpc_gait(99);
     }
     
     
@@ -240,7 +240,7 @@ public:
 	{
 	    fast_mpc_gait(jx) = msg->position[36+jx]; 
 	}
-	fast_mpc_gait_flag = msg->position[99];
+	// fast_mpc_gait_flag = msg->position[99];
 	count_in_mpc_max = msg->position[98];
 	
     }    
@@ -374,6 +374,7 @@ int main(int argc, char **argv)
     F_lr_predict.setZero();   
     Force_L_R.setZero();   
     bjx1 = 1;
+    right_support = 1;
 
     FR_torque.setZero(); 
     FL_torque.setZero(); 
@@ -424,6 +425,7 @@ int main(int argc, char **argv)
         rfoot_des[i] = 0;
         lfoot_des[i] = 0;
         theta_des[i] = 0;
+        thetaacc_des[i] = 0;
         theta_des_pre[i] = 0;
         rfoot_theta_des[i] = 0;
         lfoot_theta_des[i] = 0;
@@ -583,13 +585,11 @@ int main(int argc, char **argv)
 	butterworthLPF12.init(f_sample_comx1,fcutoff_comx2);	
 	butterworthLPF13.init(f_sample_comx1,fcutoff_comx2);	
 	butterworthLPF14.init(f_sample_comx1,fcutoff_comx2);	
-
-	
-	fcutoff_comx3 = 20;
-	butterworthLPF15.init(f_sample_comx1,fcutoff_comx3);	
-	butterworthLPF16.init(f_sample_comx1,fcutoff_comx3);	
-	butterworthLPF17.init(f_sample_comx1,fcutoff_comx3);	
-	butterworthLPF18.init(f_sample_comx1,fcutoff_comx3);	
+	butterworthLPF15.init(f_sample_comx1,fcutoff_comx2);	
+	butterworthLPF16.init(f_sample_comx1,fcutoff_comx2);	
+	butterworthLPF17.init(f_sample_comx1,fcutoff_comx2);	
+	butterworthLPF18.init(f_sample_comx1,fcutoff_comx2);
+    fcutoff_comx3 = 20;	
 	butterworthLPF19.init(f_sample_comx1,fcutoff_comx3);	
 	butterworthLPF20.init(f_sample_comx1,fcutoff_comx3);
 	butterworthLPF21.init(f_sample_comx1,fcutoff_comx3);	
@@ -670,6 +670,12 @@ int main(int argc, char **argv)
         
         
         bjx1 = slow_mpc_gait(27);
+        right_support = slow_mpc_gait(99);
+        // if(right_support>1)
+        // {
+            // cout<<"right_support:"<<right_support<<endl;
+            // cout<<count_in_rt_ros<<endl;
+        // }
         
         ////////////////////////// kinematic-based state estimation ///////////////////////////////////////////////
         // Forward kinematics: for kinematic-based state estimation //////////////////////////////////////////////
@@ -888,17 +894,17 @@ int main(int argc, char **argv)
             theta_des[0] = 0;
             theta_des[1] = 0;	    
             theta_des[2] = 0;            
-            // theta_des[0] = butterworthLPF4.filter(slow_mpc_gait(36));
-            // theta_des[1] = butterworthLPF5.filter(slow_mpc_gait(37));	    
-            // theta_des[2] = 0;
+            // theta_des[0] = butterworthLPF4.filter(slow_mpc_gait(3));
+            // theta_des[1] = butterworthLPF5.filter(slow_mpc_gait(4));	    
+            // theta_des[2] = butterworthLPF6.filter(slow_mpc_gait(5));
                
-            rfoot_des[0] = butterworthLPF6.filter(slow_mpc_gait(9));
-            rfoot_des[1] = butterworthLPF7.filter(slow_mpc_gait(10));
-            rfoot_des[2] = butterworthLPF8.filter(slow_mpc_gait(11));
+            rfoot_des[0] = butterworthLPF7.filter(slow_mpc_gait(9));
+            rfoot_des[1] = butterworthLPF8.filter(slow_mpc_gait(10));
+            rfoot_des[2] = butterworthLPF9.filter(slow_mpc_gait(11));
 
-            lfoot_des[0] = butterworthLPF9.filter(slow_mpc_gait(6));
-            lfoot_des[1] = butterworthLPF10.filter(slow_mpc_gait(7));
-            lfoot_des[2] = butterworthLPF11.filter(slow_mpc_gait(8));
+            lfoot_des[0] = butterworthLPF10.filter(slow_mpc_gait(6));
+            lfoot_des[1] = butterworthLPF11.filter(slow_mpc_gait(7));
+            lfoot_des[2] = butterworthLPF12.filter(slow_mpc_gait(8));
 
             if (count_in_rt_loop>0)
             {
@@ -908,10 +914,13 @@ int main(int argc, char **argv)
             }
 
 
-            coma_des[0] = butterworthLPF12.filter(slow_mpc_gait(39));
-            coma_des[1] = butterworthLPF13.filter(slow_mpc_gait(40));
-            coma_des[2] = butterworthLPF14.filter(slow_mpc_gait(41));		
+            coma_des[0] = butterworthLPF13.filter(slow_mpc_gait(39));
+            coma_des[1] = butterworthLPF14.filter(slow_mpc_gait(40));
+            coma_des[2] = butterworthLPF15.filter(slow_mpc_gait(41));		
 
+            thetaacc_des[0] = butterworthLPF16.filter(slow_mpc_gait(73));
+            thetaacc_des[1] = butterworthLPF17.filter(slow_mpc_gait(74));
+            thetaacc_des[2] = butterworthLPF18.filter(slow_mpc_gait(75));	
 
             if (count_in_rt_loop * gait::t_program_cyclic >= 0.6)
             {
@@ -1064,7 +1073,15 @@ int main(int argc, char **argv)
             
             F_sum(0) = gait::mass * coma_des[0];
             F_sum(1) = gait::mass * coma_des[1];
-            F_sum(2) = gait::mass * gait::_g - gait::mass * coma_des[2];
+            F_sum(2) = gait::mass * gait::_g + gait::mass * coma_des[2];
+
+            F_sum(3,0) = Momentum_sum(0,0) * coma_des[0] + Momentum_sum(0,1) * coma_des[1] + Momentum_sum(0,2) * coma_des[2];
+            F_sum(4,0) = Momentum_sum(1,0) * coma_des[0] + Momentum_sum(1,1) * coma_des[1] + Momentum_sum(1,2) * coma_des[2];
+            F_sum(5,0) = Momentum_sum(2,0) * coma_des[0] + Momentum_sum(2,1) * coma_des[1] + Momentum_sum(2,2) * coma_des[2];
+
+
+
+
 
 
             double com_rleg_dis = sqrt(pow(com_des[0]-rfoot_des[0], 2) + pow(com_des[1]-rfoot_des[1], 2) + pow(com_des[2]-rfoot_des[2], 2));
@@ -1073,46 +1090,45 @@ int main(int argc, char **argv)
             lleg_com = 1 - rleg_com;
 
 
-            
-            if(bjx1 >= 2)
+            if(right_support == 0) ////left support
             {
-                if(bjx1 % 2 ==0) ////left support
-                {
-                    F_lr_predict(0) = F_sum(0);
-                    F_lr_predict(1) = F_sum(1);
-                    F_lr_predict(2) = F_sum(2);
-                    F_lr_predict(3) = 0;
-                    F_lr_predict(4) = 0;
-                    F_lr_predict(5) = 0;
+                F_lr_predict(0) = F_sum(0);
+                F_lr_predict(1) = F_sum(1);
+                F_lr_predict(2) = F_sum(2);
+                F_lr_predict(3) = 0;
+                F_lr_predict(4) = 0;
+                F_lr_predict(5) = 0;
 
 
-                    switch (gait_mode)
-                        {
-                        case 101:  ////biped walking
-                            FR_swing = true;
-                            RR_swing = true;
-                            FR_swing = false;
-                            RR_swing = false;
-                            break;
-                        case 102:  ///troting
-                            FR_swing = true;
-                            RL_swing = true;
-                            FL_swing = false;
-                            RR_swing = false;
+                switch (gait_mode)
+                    {
+                    case 101:  ////biped walking
+                        FR_swing = true;
+                        RR_swing = true;
+                        FL_swing = false;
+                        RL_swing = false;
+                        break;
+                    case 102:  ///troting
+                        FR_swing = false;
+                        RL_swing = false;
+                        FL_swing = true;
+                        RR_swing = true;
 
-                            break;
-                        case 103:  ///gallop: alter the  x-y direction
-                            FR_swing = true;
-                            FL_swing = true;
-                            RR_swing = false;
-                            RL_swing = false;                    
+                        break;
+                    case 103:  ///gallop: alter the  x-y direction
+                        FR_swing = true;
+                        FL_swing = true;
+                        RR_swing = false;
+                        RL_swing = false;                    
 
-                            break;            
-                        default:
-                            break;
-                        } 
-                }
-                else
+                        break;            
+                    default:
+                        break;
+                    } 
+            }
+            else
+            {
+                if (right_support == 1)
                 {
                     F_lr_predict(0) = 0;
                     F_lr_predict(1) = 0;
@@ -1125,14 +1141,14 @@ int main(int argc, char **argv)
                         case 101:  ////biped walking
                             FR_swing = false;
                             RR_swing = false;
-                            FR_swing = true;
-                            RR_swing = true;
+                            FL_swing = true;
+                            RL_swing = true;
                             break;
                         case 102:  ///troting
-                            FR_swing = false;
-                            RL_swing = false;
-                            FL_swing = true;
-                            RR_swing = true;
+                            FR_swing = true;
+                            RL_swing = true;
+                            FL_swing = false;
+                            RR_swing = false;                            
 
                             break;
                         case 103:  ///gallop: alter the  x-y direction
@@ -1145,20 +1161,26 @@ int main(int argc, char **argv)
                         default:
                             break;
                         }
-                                  
                 }
+                else
+                {
+                    F_lr_predict(0) = F_sum(0) * rleg_com;
+                    F_lr_predict(3) = F_sum(0) - F_lr_predict(0);
+                    F_lr_predict(1) = F_sum(1) * rleg_com;
+                    F_lr_predict(4) = F_sum(1) - F_lr_predict(1);
+                    F_lr_predict(2) = F_sum(2) * rleg_com;
+                    F_lr_predict(5) = F_sum(2) - F_lr_predict(2);
+
+                    FR_swing = false;
+                    FL_swing = false;
+                    RR_swing = false;
+                    RL_swing = false;  
+                }                
+                
             }
-            else
-            {
-                F_lr_predict(0) = F_sum(0) * rleg_com;
-                F_lr_predict(3) = F_sum(0) - F_lr_predict(0);
-                F_lr_predict(1) = F_sum(1) * rleg_com;
-                F_lr_predict(4) = F_sum(1) - F_lr_predict(1);
-                F_lr_predict(2) = F_sum(2) * rleg_com;
-                F_lr_predict(5) = F_sum(2) - F_lr_predict(2);
+                
 
 
-            }
 
 
 
@@ -1171,6 +1193,12 @@ int main(int argc, char **argv)
             }                                
             
             Dynam.force_distribution(body_p_des,leg_position, Force_L_R, gait_mode, y_offset);
+
+            // cout<<"right_support:"<<right_support<<endl;
+            Dynam.force_opt(body_p_des,FR_foot_des, FL_foot_des, RR_foot_des, RL_foot_des,
+                            F_sum, gait_mode, right_support, y_offset);
+
+
             
             FR_torque = Dynam.compute_joint_torques(FR_Jaco,FR_swing,FR_foot_relative_des,FR_foot_relative_mea,
                                                     FR_v_relative,FR_v_est_relative,0);
@@ -1379,7 +1407,11 @@ int main(int argc, char **argv)
         for(int j=0; j<12; j++)
         {
             joint2simulationx.position[j] = lowState.motorState[j].tauEst;
-        }        
+        } 
+        for(int j=0; j<12; j++)
+        {
+            joint2simulationx.position[12+j] = Dynam.grf_opt(j,0);
+        }                 
 
 
         gait_data_pub.publish(joint2simulation);
