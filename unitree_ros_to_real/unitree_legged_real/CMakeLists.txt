@@ -73,7 +73,10 @@ ${SRC_PATH}/kinematics/Kinematics.cpp
 ${SRC_PATH}/Robotpara/robot_const_para_config.cpp
 ${SRC_PATH}/whole_body_dynamics/dynmics_compute.cpp
 ${SRC_PATH}/utils/Utils.cpp
-${SRC_PATH}/body/body.cpp)
+${SRC_PATH}/body/body.cpp
+${SRC_PATH}/QP/QPBaseClass.cpp
+${SRC_PATH}/utils/EiQuadProg/EiQuadProg.cpp
+)
 
 target_link_libraries(go1_servo_control ${EXTRA_LIBS} ${catkin_LIBRARIES})
 
