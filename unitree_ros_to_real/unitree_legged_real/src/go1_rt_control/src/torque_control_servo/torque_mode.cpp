@@ -734,6 +734,13 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                         {
                             qDes[j]=go1_Hip_max;
                         } 
+
+                        if(j /3 ==1)
+                        {
+                            torq_kp_hip = 7;
+                            torq_kd_hip = 0.3;
+                            torq_ki_hip = 0.02; 
+                        }
                         //// hip joint tracking
                         torque_err.block<torque_err_row-1,1>(0,j) = torque_err.block<torque_err_row-1,1>(1,j);
 
@@ -791,6 +798,44 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
 
                             //// thigh joint tracking
+                            if(j /3 ==0)
+                            {
+                                // // only feedback
+                                torq_kp_thigh = 8;
+                                torq_kd_thigh = 0.3;
+                                torq_ki_thigh = 0.01;  
+                                k_spring_thigh = 14;                              
+                                k_p_rest_thigh = 0.49;
+                                
+                            }
+                            
+                            if(j /3 ==1)
+                            {
+                                torq_kp_thigh = 8;
+                                torq_kd_thigh = 0.35;
+                                torq_ki_thigh = 0.01;                                  
+                                k_spring_thigh = 14;
+                                k_p_rest_thigh = 0.41;
+                            }
+
+                            if(j /3 ==2)
+                            {
+                                torq_kp_thigh = 8;
+                                torq_kd_thigh = 0.35;
+                                torq_ki_thigh = 0.01;                                 
+                                k_spring_thigh = 14;
+                                k_p_rest_thigh = 0.45;
+                            } 
+                            if(j /3 ==3)
+                            {
+                                 torq_kp_thigh = 8;
+                                torq_kd_thigh = 0.35;
+                                torq_ki_thigh = 0.01;                                                               
+                                k_spring_thigh = 12;
+                                k_p_rest_thigh = 0.27;
+                            }  
+
+                            //// fb control
                             torque_err.block<torque_err_row-1,1>(0,j) = torque_err.block<torque_err_row-1,1>(1,j);
 
                             torque_err(torque_err_row-1,j) = qDes[j] - RecvLowROS.motorState[j].q;
@@ -803,9 +848,6 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             
                             torque(j,0) = (qDes[j] - RecvLowROS.motorState[j].q)*torq_kp_thigh + (0 - RecvLowROS.motorState[j].dq)*torq_kd_thigh + torque_err_intergration(j,0)*torq_ki_thigh;
                             
-
-                            
-
                             //// ff control
                             // if(qDes[j]>=k_p_rest_thigh)
                             // {
@@ -816,11 +858,6 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             //     Torque_ff(j,0) = 0;
                             // }
                             //////// softplus funtion ///////////
-                            if(j /3 ==1)
-                            {
-                                k_p_rest_thigh = 0.61;
-                            }
-
                             Torque_ff(j,0) = log(1+exp(k_spring_thigh*(qDes[j] - (k_p_rest_thigh))));
                 
                             if(FF_enable)
@@ -828,8 +865,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                                 torque(j,0) += Torque_ff(j,0);
                             }                             
 
-                            if(torque(j,0) > 10.0f) torque(j,0) = 10.0f;
-                            if(torque(j,0) < -10.0f) torque(j,0) = -10.0f;
+                            if(torque(j,0) > 12.0f) torque(j,0) = 13.0f;
+                            if(torque(j,0) < -12.0f) torque(j,0) = -13.0f;
                         }  
                         else
                         {
@@ -892,7 +929,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                     }
                     if(j % 3 ==1)
                     {   
-                        if(j /3 ==1)
+                        if((j /3 ==1)||((j /3 ==2))||((j /3 ==3)))
                         {
                             SendLowROS.motorCmd[j].q = PosStopF;
                             SendLowROS.motorCmd[j].dq = VelStopF;
