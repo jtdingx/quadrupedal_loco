@@ -17,9 +17,9 @@ Use of this source code is governed by the MPL-2.0 license, see LICENSE.
 
 using namespace UNITREE_LEGGED_SDK;
 
-float qDes[3]={0};
-float dqDes[3] = {0}; 
-float dqDes_old[3] = {0}; 
+float qDes[12]={0};
+float dqDes[12] = {0}; 
+float dqDes_old[12] = {0}; 
 int ctrl_estimation = 1000;
 
 
@@ -79,13 +79,13 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     int rate_count = 0;
     int sin_count = 0;
-    float qInit[3]={0};
+    float qInit[12]={0};
 
     ////first configure
     // float sin_mid_q[3] = {0.0, 1.2, -2.0};
     ////second configure
-    float sin_mid_q[3] = {0.0, 0.8, -1.3};
-    double sin_joint1, sin_joint2;
+    float sin_mid_q[12] = {0.0, 0.8, -1.3,0.0, 0.8, -1.3,0.0, 0.8, -1.3,0.0, 0.8, -1.3};
+    double sin_joint[12] = {0};
 
 
     /////// spring force forward compensation
@@ -93,7 +93,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     k_spring_calf = 3;
     k_p_rest_calf = -1.3;
-    k_spring_thigh = 20; 
+    k_spring_thigh = 21; 
     k_p_rest_thigh = 0.75;
     k_spring_hip = 0;
     k_p_rest_hip = 0;
@@ -102,7 +102,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     torque_err_intergration.setZero();
     Torque_ff.setZero();
 
-    FF_enable = true; ///// Befor setting True, make sure the spring is engaged!!!!!!!!!!!!
+    FF_enable = true; ///// Before setting True, make sure the spring is engaged!!!!!!!!!!!!
     
 
 
@@ -137,13 +137,19 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     if(FF_enable)
     {
         //  feedback plus feedforward
-        torq_kp_calf = 7;
+        torq_kp_calf = 8;
         torq_kd_calf = 0.3;
         torq_ki_calf = 0.05;
-        // // only feedback
+        // // feedback plus feedforward
         torq_kp_thigh = 8;
         torq_kd_thigh = 0.3;
-        torq_ki_thigh = 0.005;        
+        torq_ki_thigh = 0.01;    
+
+        // // only feedback
+        torq_kp_hip = 8;
+        torq_kd_hip = 0.3;
+        torq_ki_hip = 0.025;         
+
     }
     else
     {
@@ -155,7 +161,12 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         // // only feedback
         torq_kp_thigh = 8;
         torq_kd_thigh = 0.3;
-        torq_ki_thigh = 0.005;
+        torq_ki_thigh = 0.01;
+
+        // // only feedback
+        torq_kp_hip = 8;
+        torq_kd_hip = 0.3;
+        torq_ki_hip = 0.025;        
 
     }
 
@@ -612,261 +623,287 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
 
 
-        //////////////////// gait control loop/////////////////////////////////////////////////////
-        /// *****************joint cmd generation*******************////
-        double targetPos[12]  = {0.0, 0.8, -1.3, 0.0, 0.8, -1.3, 0.0, 0.8, -1.3, 0.0, 0.8, -1.3};  
-        // reference angle generation: a simple test
-        if (n_count*time_programming <= stand_duration) 
-        {
-            //****************Homing_pose*******************
-            for(int j=0; j<12; j++) lastPos[j] = RecvLowROS.motorState[j].q;
+        // //////////////////// gait control loop/////////////////////////////////////////////////////
+        // /// *****************joint cmd generation*******************////
+        // double targetPos[12]  = {0.0, 0.8, -1.3, 0.0, 0.8, -1.3, 0.0, 0.8, -1.3, 0.0, 0.8, -1.3};  
+        // // reference angle generation: a simple test
+        // if (n_count*time_programming <= stand_duration) 
+        // {
+        //     //****************Homing_pose*******************
+        //     for(int j=0; j<12; j++) lastPos[j] = RecvLowROS.motorState[j].q;
 
-            percent = pow((n_count*time_programming)/stand_duration,2);
-            for(int j=0; j<12; j++){
-                SendLowROS.motorCmd[j].q = lastPos[j]*(1-percent) + targetPos[j]*percent; 
-            }
+        //     percent = pow((n_count*time_programming)/stand_duration,2);
+        //     for(int j=0; j<12; j++){
+        //         SendLowROS.motorCmd[j].q = lastPos[j]*(1-percent) + targetPos[j]*percent; 
+        //     }
 
-            FR_angle_des(0,0) = SendLowROS.motorCmd[0].q;
-            FR_angle_des(1,0) = SendLowROS.motorCmd[1].q;
-            FR_angle_des(2,0) = SendLowROS.motorCmd[2].q;
-            FL_angle_des(0,0) = SendLowROS.motorCmd[3].q;
-            FL_angle_des(1,0) = SendLowROS.motorCmd[4].q;
-            FL_angle_des(2,0) = SendLowROS.motorCmd[5].q;
-            RR_angle_des(0,0) = SendLowROS.motorCmd[6].q;
-            RR_angle_des(1,0) = SendLowROS.motorCmd[7].q;
-            RR_angle_des(2,0) = SendLowROS.motorCmd[8].q;
-            RL_angle_des(0,0) = SendLowROS.motorCmd[9].q;
-            RL_angle_des(1,0) = SendLowROS.motorCmd[10].q;
-            RL_angle_des(2,0) = SendLowROS.motorCmd[11].q;   
+        //     FR_angle_des(0,0) = SendLowROS.motorCmd[0].q;
+        //     FR_angle_des(1,0) = SendLowROS.motorCmd[1].q;
+        //     FR_angle_des(2,0) = SendLowROS.motorCmd[2].q;
+        //     FL_angle_des(0,0) = SendLowROS.motorCmd[3].q;
+        //     FL_angle_des(1,0) = SendLowROS.motorCmd[4].q;
+        //     FL_angle_des(2,0) = SendLowROS.motorCmd[5].q;
+        //     RR_angle_des(0,0) = SendLowROS.motorCmd[6].q;
+        //     RR_angle_des(1,0) = SendLowROS.motorCmd[7].q;
+        //     RR_angle_des(2,0) = SendLowROS.motorCmd[8].q;
+        //     RL_angle_des(0,0) = SendLowROS.motorCmd[9].q;
+        //     RL_angle_des(1,0) = SendLowROS.motorCmd[10].q;
+        //     RL_angle_des(2,0) = SendLowROS.motorCmd[11].q;   
 
-            FR_foot_des = FR_foot_relative_des = Kine.Forward_kinematics(FR_angle_des, 0);
-            FL_foot_des = FL_foot_relative_des = Kine.Forward_kinematics(FL_angle_des, 1);
-            RR_foot_des = RR_foot_relative_des = Kine.Forward_kinematics(RR_angle_des, 2);
-            RL_foot_des = RL_foot_relative_des = Kine.Forward_kinematics(RL_angle_des, 3);  
+        //     FR_foot_des = FR_foot_relative_des = Kine.Forward_kinematics(FR_angle_des, 0);
+        //     FL_foot_des = FL_foot_relative_des = Kine.Forward_kinematics(FL_angle_des, 1);
+        //     RR_foot_des = RR_foot_relative_des = Kine.Forward_kinematics(RR_angle_des, 2);
+        //     RL_foot_des = RL_foot_relative_des = Kine.Forward_kinematics(RL_angle_des, 3);  
             
-            /// computing the homing body position:
-            body_p_Homing(2,0) = body_p_des(2,0) = - (FR_foot_relative_des(2,0) + FL_foot_relative_des(2,0) + RR_foot_relative_des(2,0) + RL_foot_relative_des(2,0))/4;                   
-            FR_foot_des(2) = 0;
-            FL_foot_des(2) = 0;
-            RR_foot_des(2) = 0;
-            RL_foot_des(2) = 0;
+        //     /// computing the homing body position:
+        //     body_p_Homing(2,0) = body_p_des(2,0) = - (FR_foot_relative_des(2,0) + FL_foot_relative_des(2,0) + RR_foot_relative_des(2,0) + RL_foot_relative_des(2,0))/4;                   
+        //     FR_foot_des(2) = 0;
+        //     FL_foot_des(2) = 0;
+        //     RR_foot_des(2) = 0;
+        //     RL_foot_des(2) = 0;
 
-            FR_foot_Homing = FR_foot_des;
-            FL_foot_Homing = FL_foot_des;
-            RR_foot_Homing = RR_foot_des;
-            RL_foot_Homing = RL_foot_des;
-            //cout<< "xxxx!!!!!!!!!!!!!!!!!!!!xxxxxxxx"<<endl;      
-        }
-
-
+        //     FR_foot_Homing = FR_foot_des;
+        //     FL_foot_Homing = FL_foot_des;
+        //     RR_foot_Homing = RR_foot_des;
+        //     RL_foot_Homing = RL_foot_des;
+        //     //cout<< "xxxx!!!!!!!!!!!!!!!!!!!!xxxxxxxx"<<endl;      
+        // }
 
 
 
 
 
-        // gravity compensation
-        SendLowROS.motorCmd[FR_0].tau = -0.65f;
-        SendLowROS.motorCmd[FL_0].tau = +0.65f;
-        SendLowROS.motorCmd[RR_0].tau = -0.65f;
-        SendLowROS.motorCmd[RL_0].tau = +0.65f;
+
+
+        // // gravity compensation
+        // SendLowROS.motorCmd[FR_0].tau = -0.65f;
+        // SendLowROS.motorCmd[FL_0].tau = +0.65f;
+        // SendLowROS.motorCmd[RR_0].tau = -0.65f;
+        // SendLowROS.motorCmd[RL_0].tau = +0.65f;
         
         if(initiated_flag == true){
             motiontime++;            
             if( motiontime >= 0){
+
+                ////////// joint reference///////////////////////
                 // first, get record initial position
                 if( motiontime >= 0 && motiontime < 500){
-                    qInit[0] = RecvLowROS.motorState[FR_0].q;
-                    qInit[1] = RecvLowROS.motorState[FR_1].q;
-                    qInit[2] = RecvLowROS.motorState[FR_2].q;
-
-                    qDes[0] = qInit[0];
-                    qDes[1] = qInit[1];
-                    qDes[2] = qInit[2];
-
+                    for(int j=0; j<12;j++)
+                    {
+                        qInit[j] = RecvLowROS.motorState[j].q;
+                        qDes[j] = qInit[j];
+                    }
                 }
                 if( motiontime >= 500 && motiontime < 900){
                     // printf("%f %f %f\n", );
                     rate_count++;
-                    double rate = rate_count/200.0;                       // needs count to 200
-
-                    qDes[0] = jointLinearInterpolation(qInit[0], sin_mid_q[0], rate, 0);
-                    qDes[1] = jointLinearInterpolation(qInit[1], sin_mid_q[1], rate, 1);
-                    qDes[2] = jointLinearInterpolation(qInit[2], sin_mid_q[2], rate, 2);
+                    double rate = pow(rate_count/300.0,2);                       // needs count to 200
+                    for(int j=0; j<12;j++)
+                    {
+                        qDes[j] = jointLinearInterpolation(qInit[j], sin_mid_q[j], rate, 0);
+                    }
                 }
-                // last, do sine wave
                 if( motiontime >= 900){
                     sin_count++;
-                    sin_joint1 = 0.4 * sin(3*M_PI*sin_count/1000.0);
-                    sin_joint2 = -0.3 * sin(1.8*M_PI*sin_count/1000.0);
-                    qDes[0] = sin_mid_q[0];
-                    qDes[1] = sin_mid_q[1] + sin_joint1;
-                    //first configure
-                    qDes[2] = sin_mid_q[2] + sin_joint2;
-                    dqDes[2] = -0.3 * (1.8*M_PI/1000.0) * cos(1.8*M_PI*sin_count/1000.0);
-                }
 
-                if(qDes[2]<=go1_Calf_min)
-                {
-                    qDes[2]=go1_Calf_min;
-                }
-                else if (qDes[2]>=go1_Calf_max)
-                {
-                    qDes[2]=go1_Calf_max;
-                }
- 
-                if(qDes[1]<=go1_Thigh_min)
-                {
-                    qDes[1]=go1_Thigh_min;
-                }
-                else if (qDes[1]>=go1_Thigh_max)
-                {
-                    qDes[1]=go1_Thigh_max;
-                }               
+                    // sin_joint[0] = sin_joint[6] = 0.3 * sin(3*M_PI*sin_count/1000.0);
+                    // sin_joint[3] = sin_joint[9] = -0.3 * sin(3*M_PI*sin_count/1000.0);
+                    
+                    sin_joint[1] = sin_joint[4] = sin_joint[7] = sin_joint[10] = 0.4 * sin(3*M_PI*sin_count/1000.0);
+                    
+                    sin_joint[2] = sin_joint[5] = sin_joint[8] = sin_joint[11] = -0.3 * sin(1.8*M_PI*sin_count/1000.0);
+                    
 
-                if(qDes[0]<=go1_Hip_min)
-                {
-                    qDes[0]=go1_Hip_min;
-                }
-                else if (qDes[0]>=go1_Hip_max)
-                {
-                    qDes[0]=go1_Hip_max;
-                } 
-
-
-                //// FR_0 joint tracking
-                torque_err.block<torque_err_row-1,1>(0,FR_0) = torque_err.block<torque_err_row-1,1>(1,FR_0);
-
-                torque_err(torque_err_row-1,FR_0) = qDes[0] - RecvLowROS.motorState[FR_0].q;
-
-                torque_err_intergration.setZero();
-                for(int ij=0; ij<torque_err_row; ij++)
-                {
-                   torque_err_intergration(FR_0,0) += torque_err(ij,FR_0);
-                } 
-                 
-                torque(FR_0,0) = (qDes[0] - RecvLowROS.motorState[FR_0].q)*torq_kp_calf + (0 - RecvLowROS.motorState[FR_0].dq)*torq_kd_calf + torque_err_intergration(FR_0,0)*torq_ki_calf;
-                
-                if(qDes[0]<=k_p_rest_calf)
-                {
-                    Torque_ff(FR_0,0) = k_spring_calf * (qDes[0] - (k_p_rest_calf));
-                }
-                else
-                {
-                    Torque_ff(FR_0,0) = 0;
-                }
- 
-                if(FF_enable)
-                {
-                    torque(FR_0,0) += Torque_ff(FR_0,0);
-                }  
-
-                //// FR_1 joint tracking
-                torque_err.block<torque_err_row-1,1>(0,FR_1) = torque_err.block<torque_err_row-1,1>(1,FR_1);
-
-                torque_err(torque_err_row-1,FR_1) = qDes[1] - RecvLowROS.motorState[FR_1].q;
-
-                torque_err_intergration.setZero();
-                for(int ij=0; ij<torque_err_row; ij++)
-                {
-                   torque_err_intergration(FR_1,0) += torque_err(ij,FR_1);
-                } 
-                 
-                torque(FR_1,0) = (qDes[1] - RecvLowROS.motorState[FR_1].q)*torq_kp_thigh + (0 - RecvLowROS.motorState[FR_1].dq)*torq_kd_thigh + torque_err_intergration(FR_1,0)*torq_ki_thigh;
-                
-                // if(qDes[1]>=k_p_rest_thigh)
-                // {
-                //     Torque_ff(FR_1,0) = k_spring_thigh * (qDes[1] - (k_p_rest_thigh));
-                // }
-                // else
-                // {
-                //     Torque_ff(FR_1,0) = 0;
-                // }
-                Torque_ff(FR_1,0) = log(1+exp(k_spring_thigh*(qDes[1] - (k_p_rest_thigh))));
-     
-                if(FF_enable)
-                {
-                    torque(FR_1,0) += Torque_ff(FR_1,0);
-                }               
-
-                //// FR_2 joint tracking
-                torque_err.block<torque_err_row-1,1>(0,FR_2) = torque_err.block<torque_err_row-1,1>(1,FR_2);
-
-                torque_err(torque_err_row-1,FR_2) = qDes[2] - RecvLowROS.motorState[FR_2].q;
-
-                torque_err_intergration.setZero();
-                for(int ij=0; ij<torque_err_row; ij++)
-                {
-                   torque_err_intergration(FR_2,0) += torque_err(ij,FR_2);
-                } 
-                 
-                torque(FR_2,0) = (qDes[2] - RecvLowROS.motorState[FR_2].q)*torq_kp_calf + (0 - RecvLowROS.motorState[FR_2].dq)*torq_kd_calf + torque_err_intergration(FR_2,0)*torq_ki_calf;
-                
-                if(qDes[2]<=k_p_rest_calf)
-                {
-                    Torque_ff(FR_2,0) = k_spring_calf * (qDes[2] - (k_p_rest_calf));
-                }
-                else
-                {
-                    Torque_ff(FR_2,0) = 0;
+                    for(int j=0; j<12;j++)
+                    {
+                        qDes[j] = sin_mid_q[j] + sin_joint[j];
+                    }
                 }
                 
 
-                if(FF_enable)
+                /////////////// torque controller ///////////////////////
+                for(int j=0; j<12;j++)
                 {
-                    torque(FR_2,0) += Torque_ff(FR_2,0);
-                }
+                    if(j % 3 == 0)
+                    {
+                        if(qDes[j]<=go1_Hip_min)
+                        {
+                            qDes[j]=go1_Hip_min;
+                        }
+                        else if (qDes[j]>=go1_Hip_max)
+                        {
+                            qDes[j]=go1_Hip_max;
+                        } 
+                        //// hip joint tracking
+                        torque_err.block<torque_err_row-1,1>(0,j) = torque_err.block<torque_err_row-1,1>(1,j);
+
+                        torque_err(torque_err_row-1,j) = qDes[j] - RecvLowROS.motorState[j].q;
+
+                        torque_err_intergration.setZero();
+                        for(int ij=0; ij<torque_err_row; ij++)
+                        {
+                        torque_err_intergration(j,0) += torque_err(ij,j);
+                        } 
+                        
+                        torque(j,0) = (qDes[j] - RecvLowROS.motorState[j].q)*torq_kp_hip + (0 - RecvLowROS.motorState[j].dq)*torq_kd_hip + torque_err_intergration(j,0)*torq_ki_hip;
+                        
+                        //// ff control
+                        ///// tuning the parameters carefully
+                        if(qDes[j]<=k_p_rest_hip)
+                        {
+                            Torque_ff(j,0) = k_spring_hip * (qDes[j] - (k_p_rest_hip));
+                        }
+                        else
+                        {
+                            Torque_ff(j,0) = 0;
+                        }
+        
+                        if(FF_enable)
+                        {
+                            torque(j,0) += Torque_ff(j,0);
+                        }  
+                        
+                        if((j / 3 ==0) ||(j / 3 ==2))
+                        {
+                            torque(j,0) += (-0.65f);
+                        }
+                        else
+                        {
+                            torque(j,0) += (0.65f);
+                        }
+
+                        if(torque(j,0) > 5.0f) torque(j,0) = 5.0f;
+                        if(torque(j,0) < -5.0f) torque(j,0) = -5.0f;
+
+                    }
+                    else
+                    {
+                        if(j % 3 ==1)
+                        {
+                            if(qDes[j]<=go1_Thigh_min)
+                            {
+                                qDes[j]=go1_Thigh_min;
+                            }
+                            else if (qDes[j]>=go1_Thigh_max)
+                            {
+                                qDes[j]=go1_Thigh_max;
+                            }
+
+
+                            //// thigh joint tracking
+                            torque_err.block<torque_err_row-1,1>(0,j) = torque_err.block<torque_err_row-1,1>(1,j);
+
+                            torque_err(torque_err_row-1,j) = qDes[j] - RecvLowROS.motorState[j].q;
+
+                            torque_err_intergration.setZero();
+                            for(int ij=0; ij<torque_err_row; ij++)
+                            {
+                            torque_err_intergration(j,0) += torque_err(ij,j);
+                            } 
+                            
+                            torque(j,0) = (qDes[j] - RecvLowROS.motorState[j].q)*torq_kp_thigh + (0 - RecvLowROS.motorState[j].dq)*torq_kd_thigh + torque_err_intergration(j,0)*torq_ki_thigh;
+                            
+
+                            
+
+                            //// ff control
+                            // if(qDes[j]>=k_p_rest_thigh)
+                            // {
+                            //     Torque_ff(j,0) = k_spring_thigh * (qDes[j] - (k_p_rest_thigh));
+                            // }
+                            // else
+                            // {
+                            //     Torque_ff(j,0) = 0;
+                            // }
+                            //////// softplus funtion ///////////
+                            if(j /3 ==1)
+                            {
+                                k_p_rest_thigh = 0.61;
+                            }
+
+                            Torque_ff(j,0) = log(1+exp(k_spring_thigh*(qDes[j] - (k_p_rest_thigh))));
                 
+                            if(FF_enable)
+                            {
+                                torque(j,0) += Torque_ff(j,0);
+                            }                             
+
+                            if(torque(j,0) > 10.0f) torque(j,0) = 10.0f;
+                            if(torque(j,0) < -10.0f) torque(j,0) = -10.0f;
+                        }  
+                        else
+                        {
+                            if(qDes[j]<=go1_Calf_min)
+                            {
+                                qDes[j]=go1_Calf_min;
+                            }
+                            else if (qDes[j]>=go1_Calf_max)
+                            {
+                                qDes[j]=go1_Calf_max;
+                            }
+                            //// calf joint tracking
+                            torque_err.block<torque_err_row-1,1>(0,j) = torque_err.block<torque_err_row-1,1>(1,j);
+
+                            torque_err(torque_err_row-1,j) = qDes[j] - RecvLowROS.motorState[j].q;
+
+                            torque_err_intergration.setZero();
+                            for(int ij=0; ij<torque_err_row; ij++)
+                            {
+                            torque_err_intergration(j,0) += torque_err(ij,j);
+                            } 
+                            
+                            torque(j,0) = (qDes[j] - RecvLowROS.motorState[j].q)*torq_kp_calf + (0 - RecvLowROS.motorState[j].dq)*torq_kd_calf + torque_err_intergration(j,0)*torq_ki_calf;
+                            
+                            //// ff control
+                            // if(qDes[j]<=k_p_rest_calf)
+                            // {
+                            //     Torque_ff(j,0) = k_spring_calf * (qDes[j] - (k_p_rest_calf));
+                            // }
+                            // else
+                            // {
+                            //     Torque_ff(j,0) = 0;
+                            // }
+
+                            //////// softplus funtion ///////////
+                            Torque_ff(j,0) = -log(1+exp(k_spring_calf*(-(qDes[j] - (k_p_rest_calf)))));
 
 
+                            if(FF_enable)
+                            {
+                                torque(j,0) += Torque_ff(j,0);
+                            }
 
-                //// FL_2 joint
-                torque(FL_2,0) = (qDes[2] - RecvLowROS.motorState[FL_2].q)*torq_kp_calf + (0 - RecvLowROS.motorState[FL_2].dq)*torq_kd_calf;
-                
-                if(qDes[2]<=k_p_rest_calf)
-                {
-                    Torque_ff(FL_2,0) = k_spring_calf * (qDes[2] - (k_p_rest_calf));
+                            if(torque(j,0) > 5.0f) torque(j,0) = 5.0f;
+                            if(torque(j,0) < -5.0f) torque(j,0) = -5.0f;
+                        }                      
+                    }
                 }
-                else
+
+
+                for(int j=0; j<12;j++)
                 {
-                    Torque_ff(FL_2,0) = 0;
+                    if(j % 3 ==0)
+                    {
+                        SendLowROS.motorCmd[j].q = PosStopF;
+                        SendLowROS.motorCmd[j].dq = VelStopF;
+                        SendLowROS.motorCmd[j].Kp = 0;
+                        SendLowROS.motorCmd[j].Kd = 0;
+                        SendLowROS.motorCmd[j].tau = torque(j,0);
+                    }
+                    if(j % 3 ==1)
+                    {   
+                        if(j /3 ==1)
+                        {
+                            SendLowROS.motorCmd[j].q = PosStopF;
+                            SendLowROS.motorCmd[j].dq = VelStopF;
+                            SendLowROS.motorCmd[j].Kp = 0;
+                            SendLowROS.motorCmd[j].Kd = 0;
+                            SendLowROS.motorCmd[j].tau = torque(j,0);  
+                        }
+                      
+                    }
+
                 }
-                
-                if(FF_enable)
-                {
-                    torque(FL_2,0) += Torque_ff(FL_2,0);
-                }
-
-                if(torque(FR_0,0) > 3.0f) torque(FR_0,0) = 3.0f;
-                if(torque(FR_0,0) < -3.0f) torque(FR_0,0) = -3.0f;
-
-                if(torque(FR_1,0) > 10.0f) torque(FR_1,0) = 10.0f;
-                if(torque(FR_1,0) < -10.0f) torque(FR_1,0) = -10.0f;
-
-                if(torque(FR_2,0) > 3.0f) torque(FR_2,0) = 3.0f;
-                if(torque(FR_2,0) < -3.0f) torque(FR_2,0) = -3.0f;
-
-                if(torque(FL_2,0) > 3.0f) torque(FL_2,0) = 3.0f;
-                if(torque(FL_2,0) < -3.0f) torque(FL_2,0) = -3.0f;
-
-
-
-                SendLowROS.motorCmd[FR_1].q = PosStopF;
-                SendLowROS.motorCmd[FR_1].dq = VelStopF;
-                SendLowROS.motorCmd[FR_1].Kp = 0;
-                SendLowROS.motorCmd[FR_1].Kd = 0;
-                SendLowROS.motorCmd[FR_1].tau = torque(FR_1,0);
-
-                // SendLowROS.motorCmd[FR_2].q = PosStopF;
-                // SendLowROS.motorCmd[FR_2].dq = VelStopF;
-                // SendLowROS.motorCmd[FR_2].Kp = 0;
-                // SendLowROS.motorCmd[FR_2].Kd = 0;
-                // SendLowROS.motorCmd[FR_2].tau = torque(FR_2,0);
-
-                // SendLowROS.motorCmd[FL_2].q = PosStopF;
-                // SendLowROS.motorCmd[FL_2].dq = VelStopF;
-                // SendLowROS.motorCmd[FL_2].Kp = 0;
-                // SendLowROS.motorCmd[FL_2].Kd = 0;
-                // SendLowROS.motorCmd[FL_2].tau = torque(FL_2,0);
 
 
             }
@@ -879,13 +916,12 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         joint2simulationx.header.stamp = ros::Time::now();
         ////
         for(int j=0; j<12; j++){
-                joint2simulation.position[j] = SendLowROS.motorCmd[j].q; // desired joint angles; 
+                joint2simulation.position[j] = qDes[j]; // desired joint angles; 
         }
         for(int j=0; j<12; j++)
         {
             joint2simulation.position[12+j] = RecvLowROS.motorState[j].q;   // measured joint angles;
         } 
-
 
         for(int j=0; j<3; j++)
         {
@@ -942,7 +978,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         // joint torque desired 
         for(int j=0; j<12; j++)
         {
-            joint2simulation.position[78+j] = torque(j,0);
+            joint2simulation.position[78+j] = SendLowROS.motorCmd[j].tau;
         }
 
         //// torque measured
@@ -960,9 +996,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         gait_data_pub.publish(joint2simulation);
         gait_data_pubx.publish(joint2simulationx);
 
-        // /////sending command ////////////
-        // SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
-        // roslcm.Send(SendLowLCM);
+        // /////sending command //////////// 
+        SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
+        roslcm.Send(SendLowLCM);
 
         ros::spinOnce();
         loop_rate.sleep();
