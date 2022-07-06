@@ -102,7 +102,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     torque_err_intergration.setZero();
     Torque_ff.setZero();
 
-    FF_enable = true; ///// Before setting True, make sure the spring is engaged!!!!!!!!!!!!
+    FF_enable = false; ///// Before setting True, make sure the spring is engaged!!!!!!!!!!!!
     
 
 
@@ -812,7 +812,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             
                             if(j /3 ==1)
                             {
-                                torq_kp_thigh = 8+;
+                                torq_kp_thigh = 8;
                                 torq_kd_thigh = 0.3;
                                 torq_ki_thigh = 0.01;                                  
                                 k_spring_thigh = 15;
@@ -982,13 +982,14 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                     }
                     if(j % 3 ==2)
                     {   
-
-                        SendLowROS.motorCmd[j].q = PosStopF;
-                        SendLowROS.motorCmd[j].dq = VelStopF;
-                        SendLowROS.motorCmd[j].Kp = 0;
-                        SendLowROS.motorCmd[j].Kd = 0;
-                        SendLowROS.motorCmd[j].tau = torque(j,0);  
-
+                        if((j / 3 ==0))
+                        {                        
+                            SendLowROS.motorCmd[j].q = PosStopF;
+                            SendLowROS.motorCmd[j].dq = VelStopF;
+                            SendLowROS.motorCmd[j].Kp = 0;
+                            SendLowROS.motorCmd[j].Kd = 0;
+                            SendLowROS.motorCmd[j].tau = torque(j,0);  
+                        }
                       
                     }                    
 
