@@ -84,7 +84,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     ////first configure
     // float sin_mid_q[3] = {0.0, 1.2, -2.0};
     ////second configure
-    float sin_mid_q[12] = {0.0, 0.8, -1.3,0.0, 0.8, -1.3,0.0, 0.8, -1.3,0.0, 0.8, -1.3};
+    float sin_mid_q[12] = {0.0, 0.8, -1.5,0.0, 0.8, -1.5,0.0, 0.8, -1.5,0.0, 0.8, -1.5};
     double sin_joint[12] = {0};
 
 
@@ -709,9 +709,10 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                     // sin_joint[0] = sin_joint[6] = 0.3 * sin(3*M_PI*sin_count/1000.0);
                     // sin_joint[3] = sin_joint[9] = -0.3 * sin(3*M_PI*sin_count/1000.0);
                     
-                    sin_joint[1] = sin_joint[4] = sin_joint[7] = sin_joint[10] = 0.4 * sin(3*M_PI*sin_count/1000.0);
+                    // sin_joint[1] = sin_joint[4] = 0.4 * sin(3*M_PI*sin_count/1000.0);
+                    // sin_joint[7] = sin_joint[10] = 0.4 * sin(3*M_PI*sin_count/1000.0);
                     
-                    sin_joint[2] = sin_joint[5] = sin_joint[8] = sin_joint[11] = -0.3 * sin(1.8*M_PI*sin_count/1000.0);
+                    sin_joint[2] = sin_joint[5] = sin_joint[8] = sin_joint[11] = -0.4 * sin(3*M_PI*sin_count/1000.0);
                     
 
                     for(int j=0; j<12;j++)
@@ -800,39 +801,40 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             //// thigh joint tracking
                             if(j /3 ==0)
                             {
-                                // // only feedback
-                                torq_kp_thigh = 8;
+                                
+                                torq_kp_thigh = 7;
                                 torq_kd_thigh = 0.3;
                                 torq_ki_thigh = 0.01;  
-                                k_spring_thigh = 14;                              
+                                k_spring_thigh = 11;                              
                                 k_p_rest_thigh = 0.49;
                                 
                             }
                             
                             if(j /3 ==1)
                             {
-                                torq_kp_thigh = 8;
-                                torq_kd_thigh = 0.35;
+                                torq_kp_thigh = 8+;
+                                torq_kd_thigh = 0.3;
                                 torq_ki_thigh = 0.01;                                  
-                                k_spring_thigh = 14;
+                                k_spring_thigh = 15;
                                 k_p_rest_thigh = 0.41;
                             }
 
                             if(j /3 ==2)
                             {
                                 torq_kp_thigh = 8;
-                                torq_kd_thigh = 0.35;
+                                torq_kd_thigh = 0.3;
                                 torq_ki_thigh = 0.01;                                 
-                                k_spring_thigh = 14;
+                                k_spring_thigh = 19;
                                 k_p_rest_thigh = 0.45;
                             } 
                             if(j /3 ==3)
                             {
-                                 torq_kp_thigh = 8;
-                                torq_kd_thigh = 0.35;
-                                torq_ki_thigh = 0.01;                                                               
-                                k_spring_thigh = 12;
-                                k_p_rest_thigh = 0.27;
+                                torq_kp_thigh = 9;
+                                torq_kd_thigh = 0.3;
+                                torq_ki_thigh = 0.005;                                                               
+                                k_spring_thigh = 16;
+                                // k_p_rest_thigh = 0.37;
+                                k_p_rest_thigh = 0.82;
                             }  
 
                             //// fb control
@@ -865,8 +867,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                                 torque(j,0) += Torque_ff(j,0);
                             }                             
 
-                            if(torque(j,0) > 12.0f) torque(j,0) = 13.0f;
-                            if(torque(j,0) < -12.0f) torque(j,0) = -13.0f;
+                            if(torque(j,0) > 15.0f) torque(j,0) = 15.0f;
+                            if(torque(j,0) < -15.0f) torque(j,0) = -15.0f;
                         }  
                         else
                         {
@@ -878,6 +880,45 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             {
                                 qDes[j]=go1_Calf_max;
                             }
+
+                            //// calf joint tracking
+                            if(j /3 ==0)
+                            {
+                                
+                                torq_kp_calf = 9;
+                                torq_kd_calf = 0.31;
+                                torq_ki_calf = 0.01;  
+                                k_spring_calf = 6;                              
+                                k_p_rest_calf = -1.3;
+                                
+                            }
+                            
+                            if(j /3 ==1)
+                            {
+                                torq_kp_calf = 9;
+                                torq_kd_calf = 0.31;
+                                torq_ki_calf = 0.01;                                  
+                                k_spring_calf = 6;
+                                k_p_rest_calf = -1.26;
+                            }
+
+                            if(j /3 ==2)
+                            {
+                                torq_kp_calf = 9;
+                                torq_kd_calf = 0.31;
+                                torq_ki_calf = 0.01;                                  
+                                k_spring_calf = 6;
+                                k_p_rest_calf = -1.2;
+                            } 
+                            if(j /3 ==3)
+                            {
+                                torq_kp_calf = 9;
+                                torq_kd_calf = 0.31;
+                                torq_ki_calf = 0.01;                                  
+                                k_spring_calf = 6;
+                                k_p_rest_calf = -1.45;
+                            } 
+
                             //// calf joint tracking
                             torque_err.block<torque_err_row-1,1>(0,j) = torque_err.block<torque_err_row-1,1>(1,j);
 
@@ -910,8 +951,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                                 torque(j,0) += Torque_ff(j,0);
                             }
 
-                            if(torque(j,0) > 5.0f) torque(j,0) = 5.0f;
-                            if(torque(j,0) < -5.0f) torque(j,0) = -5.0f;
+                            if(torque(j,0) > 10.0f) torque(j,0) = 10.0f;
+                            if(torque(j,0) < -10.0f) torque(j,0) = -10.0f;
                         }                      
                     }
                 }
@@ -929,16 +970,27 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                     }
                     if(j % 3 ==1)
                     {   
-                        if((j /3 ==1)||((j /3 ==2))||((j /3 ==3)))
-                        {
+                        // if((j /3 ==3))
+                        // {
                             SendLowROS.motorCmd[j].q = PosStopF;
                             SendLowROS.motorCmd[j].dq = VelStopF;
                             SendLowROS.motorCmd[j].Kp = 0;
                             SendLowROS.motorCmd[j].Kd = 0;
                             SendLowROS.motorCmd[j].tau = torque(j,0);  
-                        }
+                        // }
                       
                     }
+                    if(j % 3 ==2)
+                    {   
+
+                        SendLowROS.motorCmd[j].q = PosStopF;
+                        SendLowROS.motorCmd[j].dq = VelStopF;
+                        SendLowROS.motorCmd[j].Kp = 0;
+                        SendLowROS.motorCmd[j].Kd = 0;
+                        SendLowROS.motorCmd[j].tau = torque(j,0);  
+
+                      
+                    }                    
 
                 }
 
