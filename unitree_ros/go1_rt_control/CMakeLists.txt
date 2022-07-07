@@ -67,6 +67,13 @@ target_link_libraries(go1_external_force
                       ${catkin_LIBRARIES})
 
 
+add_executable(go1_teleop_control
+               src/teleop_control.cpp)
+
+target_link_libraries(go1_teleop_control 
+                      ${catkin_LIBRARIES})               
+                      
+
 add_executable(go1_servo 
                src/servo_control/servo.cpp
                src/Filter/butterworth_filter.cpp
