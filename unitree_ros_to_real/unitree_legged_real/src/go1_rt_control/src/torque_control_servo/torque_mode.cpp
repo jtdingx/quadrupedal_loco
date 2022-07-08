@@ -638,56 +638,6 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
 
         // //////////////////// gait control loop/////////////////////////////////////////////////////
-        // /// *****************joint cmd generation*******************////
-        // double targetPos[12]  = {0.0, 0.8, -1.3, 0.0, 0.8, -1.3, 0.0, 0.8, -1.3, 0.0, 0.8, -1.3};  
-        // // reference angle generation: a simple test
-        // if (n_count*time_programming <= stand_duration) 
-        // {
-        //     //****************Homing_pose*******************
-        //     for(int j=0; j<12; j++) lastPos[j] = RecvLowROS.motorState[j].q;
-
-        //     percent = pow((n_count*time_programming)/stand_duration,2);
-        //     for(int j=0; j<12; j++){
-        //         SendLowROS.motorCmd[j].q = lastPos[j]*(1-percent) + targetPos[j]*percent; 
-        //     }
-
-        //     FR_angle_des(0,0) = SendLowROS.motorCmd[0].q;
-        //     FR_angle_des(1,0) = SendLowROS.motorCmd[1].q;
-        //     FR_angle_des(2,0) = SendLowROS.motorCmd[2].q;
-        //     FL_angle_des(0,0) = SendLowROS.motorCmd[3].q;
-        //     FL_angle_des(1,0) = SendLowROS.motorCmd[4].q;
-        //     FL_angle_des(2,0) = SendLowROS.motorCmd[5].q;
-        //     RR_angle_des(0,0) = SendLowROS.motorCmd[6].q;
-        //     RR_angle_des(1,0) = SendLowROS.motorCmd[7].q;
-        //     RR_angle_des(2,0) = SendLowROS.motorCmd[8].q;
-        //     RL_angle_des(0,0) = SendLowROS.motorCmd[9].q;
-        //     RL_angle_des(1,0) = SendLowROS.motorCmd[10].q;
-        //     RL_angle_des(2,0) = SendLowROS.motorCmd[11].q;   
-
-        //     FR_foot_des = FR_foot_relative_des = Kine.Forward_kinematics(FR_angle_des, 0);
-        //     FL_foot_des = FL_foot_relative_des = Kine.Forward_kinematics(FL_angle_des, 1);
-        //     RR_foot_des = RR_foot_relative_des = Kine.Forward_kinematics(RR_angle_des, 2);
-        //     RL_foot_des = RL_foot_relative_des = Kine.Forward_kinematics(RL_angle_des, 3);  
-            
-        //     /// computing the homing body position:
-        //     body_p_Homing(2,0) = body_p_des(2,0) = - (FR_foot_relative_des(2,0) + FL_foot_relative_des(2,0) + RR_foot_relative_des(2,0) + RL_foot_relative_des(2,0))/4;                   
-        //     FR_foot_des(2) = 0;
-        //     FL_foot_des(2) = 0;
-        //     RR_foot_des(2) = 0;
-        //     RL_foot_des(2) = 0;
-
-        //     FR_foot_Homing = FR_foot_des;
-        //     FL_foot_Homing = FL_foot_des;
-        //     RR_foot_Homing = RR_foot_des;
-        //     RL_foot_Homing = RL_foot_des;
-        //     //cout<< "xxxx!!!!!!!!!!!!!!!!!!!!xxxxxxxx"<<endl;      
-        // }
-
-        // // gravity compensation
-        // SendLowROS.motorCmd[FR_0].tau = -0.65f;
-        // SendLowROS.motorCmd[FL_0].tau = +0.65f;
-        // SendLowROS.motorCmd[RR_0].tau = -0.65f;
-        // SendLowROS.motorCmd[RL_0].tau = +0.65f;
         
         if(initiated_flag == true){
             motiontime++;            
@@ -716,6 +666,39 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                                 qDes[j] = jointLinearInterpolation(qInit[j], sin_mid_q[j], rate, 0);
                             }
                         }
+                        /// *****************homing pose computing*******************////
+                        FR_angle_des(0,0) = qDes[0];
+                        FR_angle_des(1,0) = qDes[1];
+                        FR_angle_des(2,0) = qDes[2];
+                        FL_angle_des(0,0) = qDes[3];
+                        FL_angle_des(1,0) = qDes[4];
+                        FL_angle_des(2,0) = qDes[5];
+                        RR_angle_des(0,0) = qDes[6];
+                        RR_angle_des(1,0) = qDes[7];
+                        RR_angle_des(2,0) = qDes[8];
+                        RL_angle_des(0,0) = qDes[9];
+                        RL_angle_des(1,0) = qDes[10];
+                        RL_angle_des(2,0) = qDes[11];   
+
+                        FR_foot_des = FR_foot_relative_des = Kine.Forward_kinematics(FR_angle_des, 0);
+                        FL_foot_des = FL_foot_relative_des = Kine.Forward_kinematics(FL_angle_des, 1);
+                        RR_foot_des = RR_foot_relative_des = Kine.Forward_kinematics(RR_angle_des, 2);
+                        RL_foot_des = RL_foot_relative_des = Kine.Forward_kinematics(RL_angle_des, 3);  
+                        
+                        /// computing the homing body position:
+                        body_p_Homing(2,0) = body_p_des(2,0) = - (FR_foot_relative_des(2,0) + FL_foot_relative_des(2,0) + RR_foot_relative_des(2,0) + RL_foot_relative_des(2,0))/4;                   
+                        FR_foot_des(2) = 0;
+                        FL_foot_des(2) = 0;
+                        RR_foot_des(2) = 0;
+                        RL_foot_des(2) = 0;
+
+                        FR_foot_Homing = FR_foot_des;
+                        FL_foot_Homing = FL_foot_des;
+                        RR_foot_Homing = RR_foot_des;
+                        RL_foot_Homing = RL_foot_des;
+                        //cout<< "xxxx!!!!!!!!!!!!!!!!!!!!xxxxxxxx"<<endl;      
+
+
                         if (motiontime==1500)
                         {
                             cmd_gait = STAND;
@@ -731,7 +714,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                         // sin_joint[1] = sin_joint[4] = 0.4 * sin(3*M_PI*sin_count/1000.0);
                         // sin_joint[7] = sin_joint[10] = 0.4 * sin(3*M_PI*sin_count/1000.0);
                         
-                        sin_joint[2] = sin_joint[5] = sin_joint[8] = sin_joint[11] = -0.4 * sin(3*M_PI*sin_count/1000.0);
+                        //sin_joint[2] = sin_joint[5] = sin_joint[8] = sin_joint[11] = -0.4 * sin(3*M_PI*sin_count/1000.0);
                         
 
                         for(int j=0; j<12;j++)
@@ -746,10 +729,6 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                     default:
                          break;
                 }
-
-
-
-                
 
                 /////////////// torque controller ///////////////////////
                 for(int j=0; j<12;j++)
@@ -986,7 +965,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                     }
                 }
 
-
+                /////////////// send commanded torque to LCM ///////////////////////
                 for(int j=0; j<12;j++)
                 {
 
@@ -1003,31 +982,6 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                     //     SendLowROS.motorCmd[j].Kd = 0;
                     //     SendLowROS.motorCmd[j].tau = torque(j,0);
                     // }
-                    // if(j % 3 ==1)
-                    // {   
-                    //     // if((j /3 ==3))
-                    //     // {
-                    //         SendLowROS.motorCmd[j].q = PosStopF;
-                    //         SendLowROS.motorCmd[j].dq = VelStopF;
-                    //         SendLowROS.motorCmd[j].Kp = 0;
-                    //         SendLowROS.motorCmd[j].Kd = 0;
-                    //         SendLowROS.motorCmd[j].tau = torque(j,0);  
-                    //     // }
-                      
-                    // }
-                    // if(j % 3 ==2)
-                    // {   
-                    //     if((j / 3 ==0))
-                    //     {                        
-                    //         SendLowROS.motorCmd[j].q = PosStopF;
-                    //         SendLowROS.motorCmd[j].dq = VelStopF;
-                    //         SendLowROS.motorCmd[j].Kp = 0;
-                    //         SendLowROS.motorCmd[j].Kd = 0;
-                    //         SendLowROS.motorCmd[j].tau = torque(j,0);  
-                    //     }
-                      
-                    // }                    
-
                 }
 
 
@@ -1036,7 +990,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         }
 
 
-        ///********************* data saving ************************************///////
+        ///********************* data saving & publisher ************************************///////
         joint2simulation.header.stamp = ros::Time::now();
         joint2simulationx.header.stamp = ros::Time::now();
         ////
@@ -1092,12 +1046,6 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         {
             joint2simulation.position[51+j] = body_r_des(j,0);   // desired body ori;
         }
-
-        /// body_R_des
-        for(int j=0; j<3; j++)
-        {
-            joint2simulation.position[51+j] = body_r_des(j,0);   // desired body ori;
-        }  
 
 
         // joint torque desired 

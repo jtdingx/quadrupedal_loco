@@ -29,12 +29,21 @@ MESSAGE(STATUS "EIGEN3_INCLUDE_DIR: ${EIGEN3_INCLUDE_DIR}")
 SET(SUB_SRC  src/go1_rt_control/src)
 SET(SRC_PATH  ${PROJECT_SOURCE_DIR}/${SUB_SRC})
 MESSAGE(STATUS "SRC_PATH Directory: ${SRC_PATH}")
+
+FIND_PACKAGE ( Threads REQUIRED )
+SET(SUB_SRC_NLP  src/mosek_nlp_kmp/src)
+SET(SRC_PATH_NLP  ${PROJECT_SOURCE_DIR}/${SUB_SRC_NLP})
+
+
+
 include_directories(
     include
     ${Boost_INCLUDE_DIR}
     ${catkin_INCLUDE_DIRS}
     # ${GAZEBO_INCLUDE_DIRS}
     ${SRC_PATH}
+    ${SRC_PATH_NLP}
+    /usr/local/include
 )
 
 
@@ -83,5 +92,57 @@ ${SRC_PATH}/utils/EiQuadProg/EiQuadProg.cpp
 )
 
 target_link_libraries(go1_servo_control ${EXTRA_LIBS} ${catkin_LIBRARIES})
-
 add_dependencies(go1_servo_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+
+########################## for nlp_mosek generation################
+set(RTControl_DIRS ${SRC_PATH}/NLPRTControl)
+set(NLP_DIRS ${SRC_PATH}/NLP)
+set(KMP_DIRS ${SRC_PATH}/KMP)
+set(Robopara_DIRS ${SRC_PATH}/Robotpara)
+
+#find_package(Armadillo 4.0 REQUIRED)
+#include_directories(${ARMADILLO_INCLUDE_DIRS})
+
+#################################
+#      Set Libraries
+#################################
+#set(armaLIBRARIES armadillo)
+
+
+
+# ### laptop2:mosek 9.0.86: 2019 may: require lower ld: for linux 2014 (walker and laptop)
+INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/9.3/tools/platform/linux64x86/h")
+INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/9.3/tools/platform/linux64x86/include")
+INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/mosek/9.3/tools/platform/linux64x86/bin")
+LINK_DIRECTORIES(/home/jiatao/Documents/mosek/9.3/tools/platform/linux64x86/bin)
+
+
+FILE(GLOB SOURCES
+	${RTControl_DIRS}/*.cpp
+	${NLP_DIRS}/NLPClass.cpp
+    # ${KMP_DIRS}/*.cpp
+	${Robopara_DIRS}/*.cpp
+)
+
+link_libraries(libfusion64.a)
+link_libraries(libmosek64.so)
+link_libraries(libfusion64.so)
+
+add_executable(mosek_nlp_kmp_node src/gait_nlp_kmp.cpp
+                ${SOURCES}
+                )
+
+add_dependencies(mosek_nlp_kmp_node
+        ${${PROJECT_NAME}_EXPORTED_TARGETS}
+        ${catkin_EXPORTED_TARGETS}
+)
+
+
+ target_link_libraries(mosek_nlp_kmp_node
+   ${${PROJECT_NAME}_EXPORTED_TARGETS}
+   ${catkin_LIBRARIES}
+#    ${armaLIBRARIES}
+ )
+
+
