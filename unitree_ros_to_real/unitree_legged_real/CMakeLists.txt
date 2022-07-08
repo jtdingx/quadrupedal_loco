@@ -36,6 +36,12 @@ SET(SRC_PATH_NLP  ${PROJECT_SOURCE_DIR}/${SUB_SRC_NLP})
 
 
 
+# # ### laptop2:mosek 9.0.86: 2019 may: require lower ld: for linux 2014 (walker and laptop)
+# INCLUDE_DIRECTORIES("/home/pi/Documents/mosek/9.3/tools/platform/linux64x86/h")
+# INCLUDE_DIRECTORIES("/home/pi/Documents/mosek/9.3/tools/platform/linux64x86/include")
+# INCLUDE_DIRECTORIES("/home/pi/Documents/mosek/9.3/tools/platform/linux64x86/bin")
+# LINK_DIRECTORIES(/home/pi/Documents/mosek//9.3/tools/platform/linux64x86/bin)
+
 include_directories(
     include
     ${Boost_INCLUDE_DIR}
@@ -96,10 +102,10 @@ add_dependencies(go1_servo_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_
 
 
 ########################## for nlp_mosek generation################
-set(RTControl_DIRS ${SRC_PATH}/NLPRTControl)
-set(NLP_DIRS ${SRC_PATH}/NLP)
-set(KMP_DIRS ${SRC_PATH}/KMP)
-set(Robopara_DIRS ${SRC_PATH}/Robotpara)
+set(RTControl_DIRS ${SRC_PATH_NLP}/NLPRTControl)
+set(NLP_DIRS ${SRC_PATH_NLP}/NLP)
+set(KMP_DIRS ${SRC_PATH_NLP}/KMP)
+set(Robopara_DIRS ${SRC_PATH_NLP}/Robotpara)
 
 #find_package(Armadillo 4.0 REQUIRED)
 #include_directories(${ARMADILLO_INCLUDE_DIRS})
@@ -109,40 +115,31 @@ set(Robopara_DIRS ${SRC_PATH}/Robotpara)
 #################################
 #set(armaLIBRARIES armadillo)
 
+# FILE(GLOB SOURCES
+	# ${RTControl_DIRS}/*.cpp
+	# ${NLP_DIRS}/NLPClass.cpp
+    ## ${KMP_DIRS}/*.cpp
+	# ${Robopara_DIRS}/*.cpp
+# )
+
+# link_libraries(libfusion64.a)
+# link_libraries(libmosek64.so)
+# link_libraries(libfusion64.so)
+
+# add_executable(mosek_nlp_kmp_node ${SRC_PATH_NLP}/gait_nlp_kmp.cpp
+#                 ${SOURCES}
+#                 )
+
+# add_dependencies(mosek_nlp_kmp_node
+#         ${${PROJECT_NAME}_EXPORTED_TARGETS}
+#         ${catkin_EXPORTED_TARGETS}
+# )
 
 
-# ### laptop2:mosek 9.0.86: 2019 may: require lower ld: for linux 2014 (walker and laptop)
-INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/9.3/tools/platform/linux64x86/h")
-INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/9.3/tools/platform/linux64x86/include")
-INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/mosek/9.3/tools/platform/linux64x86/bin")
-LINK_DIRECTORIES(/home/jiatao/Documents/mosek/9.3/tools/platform/linux64x86/bin)
-
-
-FILE(GLOB SOURCES
-	${RTControl_DIRS}/*.cpp
-	${NLP_DIRS}/NLPClass.cpp
-    # ${KMP_DIRS}/*.cpp
-	${Robopara_DIRS}/*.cpp
-)
-
-link_libraries(libfusion64.a)
-link_libraries(libmosek64.so)
-link_libraries(libfusion64.so)
-
-add_executable(mosek_nlp_kmp_node src/gait_nlp_kmp.cpp
-                ${SOURCES}
-                )
-
-add_dependencies(mosek_nlp_kmp_node
-        ${${PROJECT_NAME}_EXPORTED_TARGETS}
-        ${catkin_EXPORTED_TARGETS}
-)
-
-
- target_link_libraries(mosek_nlp_kmp_node
-   ${${PROJECT_NAME}_EXPORTED_TARGETS}
-   ${catkin_LIBRARIES}
-#    ${armaLIBRARIES}
- )
+#  target_link_libraries(mosek_nlp_kmp_node
+#    ${${PROJECT_NAME}_EXPORTED_TARGETS}
+#    ${catkin_LIBRARIES}
+# #    ${armaLIBRARIES}
+#  )
 
 

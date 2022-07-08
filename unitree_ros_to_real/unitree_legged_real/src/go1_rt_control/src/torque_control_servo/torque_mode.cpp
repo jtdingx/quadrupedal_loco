@@ -273,6 +273,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     root_pos.setZero();
     root_quat.setIdentity();
     root_euler.setZero();
+    root_euler_offset.setZero();
     root_rot_mat.setZero();
     root_rot_mat_z.setZero();
     root_lin_vel.setZero();
@@ -557,9 +558,11 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     while (ros::ok()){
         roslcm.Get(RecvLowLCM);
         RecvLowROS = ToRos(RecvLowLCM);
-        printf("FR_1 position: %f\n",  RecvLowROS.motorState[FR_1].q);
-        printf("FR force: %f\n",  RecvLowROS.footForceEst[FR_]);
-
+        // printf("FR_1 position: %f\n",  RecvLowROS.motorState[FR_1].q);
+        printf("FR force0: %f\n",  RecvLowROS.footForceEst[0]);
+        printf("FR force0: %f\n",  RecvLowROS.footForce[0]);
+        printf("FR force1: %f\n",  RecvLowROS.footForceEst[1]);
+        printf("FR force1: %f\n",  RecvLowROS.footForce[1]);
 
         count_in_rt_ros += 1;
 
@@ -596,16 +599,27 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         root_quat = Eigen::Quaterniond(RecvLowROS.imu.quaternion[0],
                                        RecvLowROS.imu.quaternion[1],
                                        RecvLowROS.imu.quaternion[2],
-                                       RecvLowROS.imu.quaternion[3]);         
+                                       RecvLowROS.imu.quaternion[3]); 
+        // printf("quaternion[0]: %f\n",  RecvLowROS.imu.quaternion[0]);
+        // printf("quaternion[1]: %f\n",  RecvLowROS.imu.quaternion[1]);
+        // printf("quaternion[2]: %f\n",  RecvLowROS.imu.quaternion[2]);
+        // printf("quaternion[3]: %f\n",  RecvLowROS.imu.quaternion[3]);
+
+
 
         // euler angle: roll pitch yaw
         root_rot_mat = root_quat.toRotationMatrix();
         root_euler = Utils::quat_to_euler(root_quat);
-        body_r_est(0,0) = root_euler(0);
-        body_r_est(1,0) = root_euler(1);
-        body_r_est(2,0) = root_euler(2);
 
-        double yaw_angle = root_euler[2];
+        if(n_count>1001)
+        {
+            body_r_est(0,0) = root_euler(0) - root_euler_offset(0);
+            body_r_est(1,0) = root_euler(1) - root_euler_offset(1);
+            body_r_est(2,0) = root_euler(2) - root_euler_offset(2);
+        }
+
+
+        double yaw_angle = body_r_est(2,0);
         root_rot_mat_z = Eigen::AngleAxisd(yaw_angle, Eigen::Vector3d::UnitZ());
 
         /// relative to body center. global framework;
@@ -1046,7 +1060,11 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         {
             joint2simulation.position[51+j] = body_r_des(j,0);   // desired body ori;
         }
-
+        /// body_R_mea
+        for(int j=0; j<3; j++)
+        {
+            joint2simulation.position[54+j] = body_r_est(j,0);   // desired body ori;
+        }
 
         // joint torque desired 
         for(int j=0; j<12; j++)
@@ -1070,18 +1088,40 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         gait_data_pubx.publish(joint2simulationx);
 
         // // /////sending command //////////// 
-        // SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
-        // roslcm.Send(SendLowLCM);
+        SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
+        roslcm.Send(SendLowLCM);
 
         ros::spinOnce();
         loop_rate.sleep();
 
         count++;
-        if(count > 500){
-            count = 500;
+        if(count > 1000){
+            count = 1000;
             initiated_flag = true;
         }
+
         n_count++;  
+        if(n_count==1001)
+        {
+            root_euler_offset(0) *= (1.0/1000);
+            root_euler_offset(1) *= (1.0/1000);
+            root_euler_offset(2) *= (1.0/1000);         
+               
+        }
+        else
+        {
+            if(n_count>1001)
+            {
+                n_count =1002;
+            }
+            else
+            {
+                root_euler_offset(0) += root_euler(0);
+                root_euler_offset(1) += root_euler(1);
+                root_euler_offset(2) += root_euler(2);                
+            }
+             
+        }
 
     }
     return 0;

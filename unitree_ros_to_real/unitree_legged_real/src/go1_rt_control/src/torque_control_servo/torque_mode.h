@@ -126,6 +126,7 @@ Eigen::Matrix<double,3,1> FR_v_est_relative, FL_v_est_relative,RR_v_est_relative
 Eigen::Vector3d root_pos;
 Eigen::Quaterniond root_quat;
 Eigen::Vector3d root_euler;
+Eigen::Vector3d root_euler_offset;
 Eigen::Matrix3d root_rot_mat;
 Eigen::Matrix3d root_rot_mat_z;
 Eigen::Vector3d root_lin_vel;
