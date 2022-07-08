@@ -19,6 +19,9 @@ Use of this source code is governed by the MPL-2.0 license, see LICENSE.
 #include "whole_body_dynamics/dynmics_compute.h"
 #include "utils/Utils.h"
 
+#include "sensor_msgs/Imu.h"
+#include "geometry_msgs/Twist.h"
+
 #include "utils/filter.hpp"
 
 
@@ -27,6 +30,40 @@ Use of this source code is governed by the MPL-2.0 license, see LICENSE.
 
 using namespace UNITREE_LEGGED_SDK;
 
+
+typedef enum {
+    STAND_INIT = 100,
+    STAND = 101,
+    DYNAMIC  = 102,
+    ARM_OPERATION = 103,
+    UP_STAIR = 104,
+    DOWN_STAIR = 105,
+    PLAY_FOOTBALL = 106,
+    DANCE = 107,
+    JUMPING = 108,
+    MetaFcnCompliance = 109,
+    MetaFcnStaticBalance = 110
+}CmdGait;
+
+typedef enum {
+    STAND_INIT_STATUS = 200,
+    STAND_STATUS = 201,
+    DYNAMIC_STATUS = 202,
+    ARM_OPERATION_STATUS = 203,
+    UP_STAIR_STATUS = 204,
+    DOWN_STAIR_STATUS = 205,
+    PLAY_FOOTBALL_STATUS = 206,
+    DANCE_STATUS = 207,
+    JUMPING_STATUS = 208,
+    MetaFcnComplianceStatus = 209,
+    MetaFcnStaticBalanceStatus = 210
+}GaitStatus;
+
+
+
+//gait switch
+CmdGait cmd_gait;
+GaitStatus gait_status;
 
 const int torque_err_row = 500;
 ////// initial parameters for joint-tracking

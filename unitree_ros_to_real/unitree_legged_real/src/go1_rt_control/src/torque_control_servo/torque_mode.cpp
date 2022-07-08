@@ -44,6 +44,15 @@ double jointLinearInterpolation(double initPos, double targetPos, double rate, i
 }
 
 
+void keyboard_model_callback(const geometry_msgs::Twist &msgIn) {
+    
+    if((msgIn.linear.x ==1)&&(gait_status = STAND_STATUS))
+    {
+        cmd_gait = DYNAMIC;
+    }
+}
+
+
 template<typename TCmd, typename TState, typename TLCM>
 int mainHelper(int argc, char *argv[], TLCM &roslcm)
 {
@@ -57,6 +66,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     ros::Publisher gait_data_pub; // for data_analysis
     ros::Publisher gait_data_pubx;  
+    ros::Subscriber key_board_cmd; //// for key board control
 
 
     long motiontime=0;
@@ -70,6 +80,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     sensor_msgs::JointState joint2simulation, joint2simulationx;
     joint2simulation.position.resize(100);
     joint2simulationx.position.resize(100);    
+
+
+    cmd_gait = STAND_INIT;
      
     bool initiated_flag = false;  // initiate need time
     
@@ -517,7 +530,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     roslcm.SubscribeState();
     gait_data_pub = n.advertise<sensor_msgs::JointState>("go1_gait_data",10);
-    gait_data_pubx = n.advertise<sensor_msgs::JointState>("go1_gait_datax",10);       
+    gait_data_pubx = n.advertise<sensor_msgs::JointState>("go1_gait_datax",10);    
+    key_board_cmd = n.subscribe("/Robot_mode", 1, &keyboard_model_callback);
 
     pthread_t tid;
     pthread_create(&tid, NULL, update_loop<TLCM>, &roslcm);
@@ -669,12 +683,6 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         //     //cout<< "xxxx!!!!!!!!!!!!!!!!!!!!xxxxxxxx"<<endl;      
         // }
 
-
-
-
-
-
-
         // // gravity compensation
         // SendLowROS.motorCmd[FR_0].tau = -0.65f;
         // SendLowROS.motorCmd[FL_0].tau = +0.65f;
@@ -685,41 +693,62 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
             motiontime++;            
             if( motiontime >= 0){
 
-                ////////// joint reference///////////////////////
-                // first, get record initial position
-                if( motiontime >= 0 && motiontime < 500){
-                    for(int j=0; j<12;j++)
-                    {
-                        qInit[j] = RecvLowROS.motorState[j].q;
-                        qDes[j] = qInit[j];
-                    }
-                }
-                if( motiontime >= 500 && motiontime < 900){
-                    // printf("%f %f %f\n", );
-                    rate_count++;
-                    double rate = pow(rate_count/300.0,2);                       // needs count to 200
-                    for(int j=0; j<12;j++)
-                    {
-                        qDes[j] = jointLinearInterpolation(qInit[j], sin_mid_q[j], rate, 0);
-                    }
-                }
-                if( motiontime >= 900){
-                    sin_count++;
+                //gait status switch begin
+                switch (cmd_gait){
+                    case STAND_INIT:
+                        gait_status = STAND_INIT_STATUS;
+                        ////////// joint reference///////////////////////
+                        // recording initial position
+                        if( motiontime >= 0 && motiontime < 500){
+                            for(int j=0; j<12;j++)
+                            {
+                                qInit[j] = RecvLowROS.motorState[j].q;
+                                qDes[j] = qInit[j];
+                            }
+                        }
+                        //// move to the homing pose
+                        if( motiontime >= 500 && motiontime <= 1500){
+                            // printf("%f %f %f\n", );
+                            rate_count++;
+                            double rate = pow(rate_count/1000.0,2); 
+                            for(int j=0; j<12;j++)
+                            {
+                                qDes[j] = jointLinearInterpolation(qInit[j], sin_mid_q[j], rate, 0);
+                            }
+                        }
+                        if (motiontime==1500)
+                        {
+                            cmd_gait = STAND;
+                        }
+                        break;
+                    case STAND:
+                        gait_status = STAND_STATUS;
+                        sin_count++;
 
-                    // sin_joint[0] = sin_joint[6] = 0.3 * sin(3*M_PI*sin_count/1000.0);
-                    // sin_joint[3] = sin_joint[9] = -0.3 * sin(3*M_PI*sin_count/1000.0);
-                    
-                    // sin_joint[1] = sin_joint[4] = 0.4 * sin(3*M_PI*sin_count/1000.0);
-                    // sin_joint[7] = sin_joint[10] = 0.4 * sin(3*M_PI*sin_count/1000.0);
-                    
-                    sin_joint[2] = sin_joint[5] = sin_joint[8] = sin_joint[11] = -0.4 * sin(3*M_PI*sin_count/1000.0);
-                    
+                        // sin_joint[0] = sin_joint[6] = 0.3 * sin(3*M_PI*sin_count/1000.0);
+                        // sin_joint[3] = sin_joint[9] = -0.3 * sin(3*M_PI*sin_count/1000.0);
+                        
+                        // sin_joint[1] = sin_joint[4] = 0.4 * sin(3*M_PI*sin_count/1000.0);
+                        // sin_joint[7] = sin_joint[10] = 0.4 * sin(3*M_PI*sin_count/1000.0);
+                        
+                        sin_joint[2] = sin_joint[5] = sin_joint[8] = sin_joint[11] = -0.4 * sin(3*M_PI*sin_count/1000.0);
+                        
 
-                    for(int j=0; j<12;j++)
-                    {
-                        qDes[j] = sin_mid_q[j] + sin_joint[j];
-                    }
+                        for(int j=0; j<12;j++)
+                        {
+                            qDes[j] = sin_mid_q[j] + sin_joint[j];
+                        }
+
+
+                        break;
+                    case DYNAMIC:
+                        break;
+                    default:
+                         break;
                 }
+
+
+
                 
 
                 /////////////// torque controller ///////////////////////
@@ -960,38 +989,44 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
                 for(int j=0; j<12;j++)
                 {
-                    if(j % 3 ==0)
-                    {
-                        SendLowROS.motorCmd[j].q = PosStopF;
-                        SendLowROS.motorCmd[j].dq = VelStopF;
-                        SendLowROS.motorCmd[j].Kp = 0;
-                        SendLowROS.motorCmd[j].Kd = 0;
-                        SendLowROS.motorCmd[j].tau = torque(j,0);
-                    }
-                    if(j % 3 ==1)
-                    {   
-                        // if((j /3 ==3))
-                        // {
-                            SendLowROS.motorCmd[j].q = PosStopF;
-                            SendLowROS.motorCmd[j].dq = VelStopF;
-                            SendLowROS.motorCmd[j].Kp = 0;
-                            SendLowROS.motorCmd[j].Kd = 0;
-                            SendLowROS.motorCmd[j].tau = torque(j,0);  
-                        // }
+
+                    SendLowROS.motorCmd[j].q = PosStopF;
+                    SendLowROS.motorCmd[j].dq = VelStopF;
+                    SendLowROS.motorCmd[j].Kp = 0;
+                    SendLowROS.motorCmd[j].Kd = 0;
+                    SendLowROS.motorCmd[j].tau = torque(j,0);                      
+                    // if(j % 3 ==0)
+                    // {
+                    //     SendLowROS.motorCmd[j].q = PosStopF;
+                    //     SendLowROS.motorCmd[j].dq = VelStopF;
+                    //     SendLowROS.motorCmd[j].Kp = 0;
+                    //     SendLowROS.motorCmd[j].Kd = 0;
+                    //     SendLowROS.motorCmd[j].tau = torque(j,0);
+                    // }
+                    // if(j % 3 ==1)
+                    // {   
+                    //     // if((j /3 ==3))
+                    //     // {
+                    //         SendLowROS.motorCmd[j].q = PosStopF;
+                    //         SendLowROS.motorCmd[j].dq = VelStopF;
+                    //         SendLowROS.motorCmd[j].Kp = 0;
+                    //         SendLowROS.motorCmd[j].Kd = 0;
+                    //         SendLowROS.motorCmd[j].tau = torque(j,0);  
+                    //     // }
                       
-                    }
-                    if(j % 3 ==2)
-                    {   
-                        if((j / 3 ==0))
-                        {                        
-                            SendLowROS.motorCmd[j].q = PosStopF;
-                            SendLowROS.motorCmd[j].dq = VelStopF;
-                            SendLowROS.motorCmd[j].Kp = 0;
-                            SendLowROS.motorCmd[j].Kd = 0;
-                            SendLowROS.motorCmd[j].tau = torque(j,0);  
-                        }
+                    // }
+                    // if(j % 3 ==2)
+                    // {   
+                    //     if((j / 3 ==0))
+                    //     {                        
+                    //         SendLowROS.motorCmd[j].q = PosStopF;
+                    //         SendLowROS.motorCmd[j].dq = VelStopF;
+                    //         SendLowROS.motorCmd[j].Kp = 0;
+                    //         SendLowROS.motorCmd[j].Kd = 0;
+                    //         SendLowROS.motorCmd[j].tau = torque(j,0);  
+                    //     }
                       
-                    }                    
+                    // }                    
 
                 }
 
@@ -1086,9 +1121,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         gait_data_pub.publish(joint2simulation);
         gait_data_pubx.publish(joint2simulationx);
 
-        // /////sending command //////////// 
-        SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
-        roslcm.Send(SendLowLCM);
+        // // /////sending command //////////// 
+        // SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
+        // roslcm.Send(SendLowLCM);
 
         ros::spinOnce();
         loop_rate.sleep();
