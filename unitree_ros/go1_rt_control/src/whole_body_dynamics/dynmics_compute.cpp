@@ -141,7 +141,7 @@ Eigen::Matrix<double, 3,1> Dynamiccclass::compute_joint_torques(Eigen::Matrix<do
 void Dynamiccclass::force_distribution(Eigen::Matrix<double, 3,1> com_des, 
                                        Eigen::Matrix<double, 12,1> leg_des, 
                                        Eigen::Matrix<double, 6,1> F_force_des, 
-                                       int mode, double y_coefficient)
+                                       int mode, double y_coefficient, double rfoot_des[3],double lfoot_des[3])
 {
     double body_FR_dis = sqrt(pow(com_des(0)-leg_des(0),2) + pow(com_des(1)-leg_des(1),2) + pow(com_des(2)-leg_des(2),2));
     double body_FL_dis = sqrt(pow(com_des(0)-leg_des(3),2) + pow(com_des(1)-leg_des(4),2) + pow(com_des(2)-leg_des(5),2));
@@ -182,31 +182,65 @@ void Dynamiccclass::force_distribution(Eigen::Matrix<double, 3,1> com_des,
     }
     else
     {
-        if (mode == 102) ////troting
+        if (mode == 102) ////troting   ///////// F_leg_ref:  FR, FL, RR, RL ////////
         {
             ///// FL,RR is the right leg, FR,RL is the left leg /////
-            f_double = F_force_des(0)* body_FL_dis/(body_FL_dis + body_RR_dis); /// L X;
+
+            Eigen::Vector3d vec_foot_rl;
+            vec_foot_rl << leg_des[9] - leg_des[0],
+                           leg_des[10] - leg_des[1],
+                           leg_des[11] - leg_des[2];
+
+            Eigen::Vector3d vec_com_rfoot;
+            vec_com_rfoot << lfoot_des[0] - leg_des[0],
+                           lfoot_des[1] - leg_des[1],
+                           lfoot_des[2] - leg_des[2];                          
+
+            double rlleg_dis = sqrt(pow(vec_foot_rl[0], 2) + pow(vec_foot_rl[1], 2) + pow(vec_foot_rl[2], 2));
+            double com_rleg_dis = vec_foot_rl[0]*vec_com_rfoot[0] + vec_foot_rl[1]*vec_com_rfoot[1] + vec_foot_rl[2]*vec_com_rfoot[2];
+            double rleg_com_raw = com_rleg_dis /rlleg_dis;
+            double rleg_com_raw1 = std::min(rleg_com_raw,1.0);
+            double rleg_com = std::max(rleg_com_raw1,0.0);        
+
+
+            f_double = F_force_des(0)* rleg_com; /// L X;
             F_leg_ref(0,3) = f_double;
             F_leg_ref(0,0) = F_force_des(0) - f_double;
             
-            f_double = F_force_des(1)* body_FL_dis/(body_FL_dis + body_RR_dis)*y_coefficient; /// L Y;
+            f_double = F_force_des(1)* rleg_com*y_coefficient; /// L Y;
             F_leg_ref(1,3) = f_double;
             F_leg_ref(1,0) = F_force_des(1)*y_coefficient - f_double;        
 
-            f_double = F_force_des(2)* body_FL_dis/(body_FL_dis + body_RR_dis); /// L Z;
+            f_double = F_force_des(2)* rleg_com; /// L Z;
             F_leg_ref(2,3) = f_double;
             F_leg_ref(2,0) = F_force_des(2) - f_double;
 
+            //////////////////////////
+            Eigen::Vector3d vec_foot_rlx;
+            vec_foot_rlx << leg_des[6] - leg_des[3],
+                           leg_des[7] - leg_des[4],
+                           leg_des[8] - leg_des[5];
 
-            f_double = F_force_des(3)* body_FR_dis/(body_FR_dis + body_RL_dis); /// R x;
+            Eigen::Vector3d vec_com_rfootx;
+            vec_com_rfootx << rfoot_des[0] - leg_des[3],
+                           rfoot_des[1] - leg_des[4],
+                           rfoot_des[2] - leg_des[5];                          
+
+            double rlleg_disx = sqrt(pow(vec_foot_rlx[0], 2) + pow(vec_foot_rlx[1], 2) + pow(vec_foot_rlx[2], 2));
+            double com_rleg_disx = vec_foot_rlx[0]*vec_com_rfootx[0] + vec_foot_rlx[1]*vec_com_rfootx[1] + vec_foot_rlx[2]*vec_com_rfootx[2];
+            double rleg_com_rawx = com_rleg_disx /rlleg_disx;
+            double rleg_com_raw1x = std::min(rleg_com_rawx,1.0);
+            double rleg_comx = std::max(rleg_com_raw1x,0.0); 
+
+            f_double = F_force_des(3)* rleg_comx; /// R x;
             F_leg_ref(0,2) = f_double;
             F_leg_ref(0,1) = F_force_des(3) - f_double;          
 
-            f_double = F_force_des(4)* body_FR_dis/(body_FR_dis + body_RL_dis)*y_coefficient; /// R y;
+            f_double = F_force_des(4)* rleg_comx*y_coefficient; /// R y;
             F_leg_ref(1,2) = f_double;
             F_leg_ref(1,1) = F_force_des(4)*y_coefficient - f_double;  
 
-            f_double = F_force_des(5)* body_FR_dis/(body_FR_dis + body_RL_dis); /// R z;
+            f_double = F_force_des(5)* rleg_comx; /// R z;
             F_leg_ref(2,2) = f_double;
             F_leg_ref(2,1) = F_force_des(5) - f_double;           
         } 
