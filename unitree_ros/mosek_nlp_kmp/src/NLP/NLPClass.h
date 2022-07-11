@@ -5,7 +5,7 @@ Description:	Header file of NLPClass
 */
 #pragma once
 
-// #include "QP/QPBaseClass.h"
+#include "QP/QPBaseClass.h"
 #include <iostream>
 #include <Eigen/Dense>
 #include <math.h>
@@ -38,7 +38,7 @@ const double _height_offset = 0.000;
 const double _height_squat_time = 1;
 
 
-class NLPClass
+class NLPClass:QPBaseClass
 {
 public:
 	NLPClass();

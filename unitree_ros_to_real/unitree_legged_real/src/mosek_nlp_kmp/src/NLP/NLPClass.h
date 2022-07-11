@@ -5,7 +5,7 @@ Description:	Header file of NLPClass
 */
 #pragma once
 
-// #include "QP/QPBaseClass.h"
+#include "QP/QPBaseClass.h"
 #include <iostream>
 #include <Eigen/Dense>
 #include <math.h>
@@ -38,7 +38,7 @@ const double _height_offset = 0.000;
 const double _height_squat_time = 1;
 
 
-class NLPClass
+class NLPClass : public QPBaseClass
 {
 public:
 	NLPClass();
@@ -74,7 +74,7 @@ public:
 	///////////////=================================================/////////////////////////////
 	////// for trajectory intepolation
 	void Foot_trajectory_solve(int j_index, bool _stopwalking);
-        Eigen::Matrix<double, 18, 1> Foot_trajectory_solve_mod2(int j_index,bool _stopwalking);
+    Eigen::Matrix<double, 18, 1> Foot_trajectory_solve_mod2(int j_index,bool _stopwalking);
     
     
     

@@ -30,6 +30,7 @@ std::shared_ptr<ndarray<double,1>> ndou(const std::vector<double> &X) { return n
 
 
 NLPClass::NLPClass()
+  :QPBaseClass()
     :_robot_name("")
     , _robot_mass(12)
     , _lift_height(0.03)

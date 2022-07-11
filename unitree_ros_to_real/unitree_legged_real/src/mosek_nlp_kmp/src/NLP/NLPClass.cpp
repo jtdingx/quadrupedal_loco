@@ -29,7 +29,7 @@ std::shared_ptr<ndarray<int,1>>    nint(const std::vector<int> &X)    { return n
 std::shared_ptr<ndarray<double,1>> ndou(const std::vector<double> &X) { return new_array_ptr<double>(X); }
 
 
-NLPClass::NLPClass()
+NLPClass::NLPClass():QPBaseClass
     :_robot_name("")
     , _robot_mass(12)
     , _lift_height(0.03)

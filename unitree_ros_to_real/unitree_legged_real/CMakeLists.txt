@@ -37,10 +37,10 @@ SET(SRC_PATH_NLP  ${PROJECT_SOURCE_DIR}/${SUB_SRC_NLP})
 
 
 # # ### laptop2:mosek 9.0.86: 2019 may: require lower ld: for linux 2014 (walker and laptop)
-# INCLUDE_DIRECTORIES("/home/pi/Documents/mosek/9.3/tools/platform/linux64x86/h")
-# INCLUDE_DIRECTORIES("/home/pi/Documents/mosek/9.3/tools/platform/linux64x86/include")
-# INCLUDE_DIRECTORIES("/home/pi/Documents/mosek/9.3/tools/platform/linux64x86/bin")
-# LINK_DIRECTORIES(/home/pi/Documents/mosek//9.3/tools/platform/linux64x86/bin)
+# INCLUDE_DIRECTORIES("~/Documents/mosektoolslinuxaarch64/mosek/9.3/tools/platform/linuxaarch64/h")
+# INCLUDE_DIRECTORIES("~/Documents/mosektoolslinuxaarch64/mosek/9.3/tools/platform/linuxaarch64/include")
+# INCLUDE_DIRECTORIES("~/Documents/mosektoolslinuxaarch64/mosek/9.3/tools/platform/linuxaarch64/bin")
+# LINK_DIRECTORIES(~/Documents/mosektoolslinuxaarch64/mosek/9.3/tools/platform/linuxaarch64/bin)
 
 include_directories(
     include
@@ -116,10 +116,10 @@ set(Robopara_DIRS ${SRC_PATH_NLP}/Robotpara)
 #set(armaLIBRARIES armadillo)
 
 # FILE(GLOB SOURCES
-	# ${RTControl_DIRS}/*.cpp
-	# ${NLP_DIRS}/NLPClass.cpp
-    ## ${KMP_DIRS}/*.cpp
-	# ${Robopara_DIRS}/*.cpp
+# 	${RTControl_DIRS}/*.cpp
+# 	${NLP_DIRS}/NLPClass.cpp
+#     # ${KMP_DIRS}/*.cpp
+# 	${Robopara_DIRS}/*.cpp
 # )
 
 # link_libraries(libfusion64.a)
