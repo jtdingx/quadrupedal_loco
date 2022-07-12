@@ -16,6 +16,7 @@ Use of this source code is governed by the MPL-2.0 license, see LICENSE.
 #include "Robotpara/robot_const_para_config.h"
 
 using namespace UNITREE_LEGGED_SDK;
+float pi=3.1415926;
 
 float qDes[12]={0};
 float dqDes[12] = {0}; 
@@ -97,7 +98,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     ////first configure
     // float sin_mid_q[3] = {0.0, 1.2, -2.0};
     ////second configure
-    float sin_mid_q[12] = {0.0, 0.8, -1.5,0.0, 0.8, -1.5,0.0, 0.8, -1.5,0.0, 0.8, -1.5};
+    float sin_mid_q[12] = {0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2};
     double sin_joint[12] = {0};
 
 
@@ -819,13 +820,21 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                                 qDes[j]=go1_Thigh_max;
                             }
 
-
+                            double kp_scale = 1;
+                            double kd_scale = 0.65;
                             //// thigh joint tracking
                             if(j /3 ==0)
                             {
+                                //// too soft: only for swing leg
+                                // torq_kp_thigh = 7;
+                                // torq_kd_thigh = 0.3;
+                                // torq_ki_thigh = 0.01;  
+                                // k_spring_thigh = 11;                              
+                                // k_p_rest_thigh = 0.49;
                                 
-                                torq_kp_thigh = 7;
-                                torq_kd_thigh = 0.3;
+                                //// support leg
+                                torq_kp_thigh = 18 * kp_scale;
+                                torq_kd_thigh = 0.65 * kd_scale;
                                 torq_ki_thigh = 0.01;  
                                 k_spring_thigh = 11;                              
                                 k_p_rest_thigh = 0.49;
@@ -834,29 +843,53 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             
                             if(j /3 ==1)
                             {
-                                torq_kp_thigh = 8;
-                                torq_kd_thigh = 0.3;
-                                torq_ki_thigh = 0.01;                                  
+                                // //// too soft: only for swing leg
+                                // torq_kp_thigh = 8;
+                                // torq_kd_thigh = 0.3;
+                                // torq_ki_thigh = 0.01;                                  
+                                // k_spring_thigh = 15;
+                                // k_p_rest_thigh = 0.41;
+                                //// support leg
+                                torq_kp_thigh = 18* kp_scale;
+                                torq_kd_thigh = 0.65* kd_scale;
+                                torq_ki_thigh = 0.01;                                 
                                 k_spring_thigh = 15;
-                                k_p_rest_thigh = 0.41;
+                                k_p_rest_thigh = 0.41;                              
                             }
 
                             if(j /3 ==2)
                             {
-                                torq_kp_thigh = 8;
-                                torq_kd_thigh = 0.3;
+                                // //// too soft: only for swing leg
+                                // torq_kp_thigh = 8;
+                                // torq_kd_thigh = 0.3;
+                                // torq_ki_thigh = 0.01;                                 
+                                // k_spring_thigh = 19;
+                                // k_p_rest_thigh = 0.45;
+                                //// support leg
+                                torq_kp_thigh = 18* 1;
+                                torq_kd_thigh = 0.65* 1;
                                 torq_ki_thigh = 0.01;                                 
                                 k_spring_thigh = 19;
                                 k_p_rest_thigh = 0.45;
+
                             } 
                             if(j /3 ==3)
                             {
-                                torq_kp_thigh = 9;
-                                torq_kd_thigh = 0.3;
-                                torq_ki_thigh = 0.005;                                                               
+                                // //// too soft: only for swing leg
+                                // torq_kp_thigh = 9;
+                                // torq_kd_thigh = 0.3;
+                                // torq_ki_thigh = 0.005;                                                               
+                                // k_spring_thigh = 16;
+                                // // k_p_rest_thigh = 0.37;
+                                // k_p_rest_thigh = 0.82;
+
+                                //// support leg
+                                torq_kp_thigh = 18* 1;
+                                torq_kd_thigh = 0.65* 1;
+                                torq_ki_thigh = 0.01;                                 
                                 k_spring_thigh = 16;
                                 // k_p_rest_thigh = 0.37;
-                                k_p_rest_thigh = 0.82;
+                                k_p_rest_thigh = 0.82;                                 
                             }  
 
                             //// fb control
@@ -894,6 +927,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                         }  
                         else
                         {
+                            double calf_kp_scal = 1.2;
+                            double calf_kd_scal = 1.2;
                             if(qDes[j]<=go1_Calf_min)
                             {
                                 qDes[j]=go1_Calf_min;
@@ -906,9 +941,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             //// calf joint tracking
                             if(j /3 ==0)
                             {
-                                
-                                torq_kp_calf = 9;
-                                torq_kd_calf = 0.31;
+                                //// basic value is for swing leg
+                                torq_kp_calf = 9 * calf_kp_scal;
+                                torq_kd_calf = 0.31 * calf_kd_scal;
                                 torq_ki_calf = 0.01;  
                                 k_spring_calf = 6;                              
                                 k_p_rest_calf = -1.3;
@@ -917,8 +952,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             
                             if(j /3 ==1)
                             {
-                                torq_kp_calf = 9;
-                                torq_kd_calf = 0.31;
+                                //// basic value is for swing leg
+                                torq_kp_calf = 9 * calf_kp_scal;
+                                torq_kd_calf = 0.31 * calf_kd_scal;
                                 torq_ki_calf = 0.01;                                  
                                 k_spring_calf = 6;
                                 k_p_rest_calf = -1.26;
@@ -926,16 +962,18 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
                             if(j /3 ==2)
                             {
-                                torq_kp_calf = 9;
-                                torq_kd_calf = 0.31;
+                                //// basic value is for swing leg
+                                torq_kp_calf = 9 * 1;
+                                torq_kd_calf = 0.31 * 1;
                                 torq_ki_calf = 0.01;                                  
                                 k_spring_calf = 6;
                                 k_p_rest_calf = -1.2;
                             } 
                             if(j /3 ==3)
                             {
-                                torq_kp_calf = 9;
-                                torq_kd_calf = 0.31;
+                                //// basic value is for swing leg
+                                torq_kp_calf = 9 * 1;
+                                torq_kd_calf = 0.31 * 1;
                                 torq_ki_calf = 0.01;                                  
                                 k_spring_calf = 6;
                                 k_p_rest_calf = -1.45;

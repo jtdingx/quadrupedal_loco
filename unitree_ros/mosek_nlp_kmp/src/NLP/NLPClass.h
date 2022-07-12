@@ -38,7 +38,7 @@ const double _height_offset = 0.000;
 const double _height_squat_time = 1;
 
 
-class NLPClass:QPBaseClass
+class NLPClass: public QPBaseClass
 {
 public:
 	NLPClass();
@@ -190,6 +190,7 @@ private:
   
 	void step_timing_constraints(int i);  
 	
+	void Solve();
 	
     //parameters declaration  
     // all the variable for step timing optimization

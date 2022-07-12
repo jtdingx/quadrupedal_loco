@@ -34,7 +34,7 @@ SET(SRC_PATH  ${PROJECT_SOURCE_DIR}/${SUB_SRC})
 
 find_package(Armadillo 4.0 REQUIRED)
 include_directories(${ARMADILLO_INCLUDE_DIRS})
-
+MESSAGE(STATUS "ARMADILLO_INCLUDE_DIR: ${ARMADILLO_INCLUDE_DIRS}")
 #################################
 #      Set Libraries
 #################################
@@ -46,7 +46,8 @@ set(RTControl_DIRS ${SRC_PATH}/NLPRTControl)
 set(NLP_DIRS ${SRC_PATH}/NLP)
 set(KMP_DIRS ${SRC_PATH}/KMP)
 set(Robopara_DIRS ${SRC_PATH}/Robotpara)
-
+set(QP_DIRS ${SRC_PATH}/QP)
+set(Eigen_qp_DIRS ${SRC_PATH}/utils/EiQuadProg)
 
 # ### laptop2:mosek 9.0.86: 2019 may: require lower ld: for linux 2014 (walker and laptop)
 INCLUDE_DIRECTORIES("/home/jiatao/Documents/mosek/9.3/tools/platform/linux64x86/h")
@@ -68,9 +69,12 @@ INCLUDE_DIRECTORIES(
 
 FILE(GLOB SOURCES
 	${RTControl_DIRS}/*.cpp
-	${NLP_DIRS}/NLPClass.cpp
+	# ${NLP_DIRS}/NLPClass.cpp
+  ${NLP_DIRS}/NLPClass_sqp.cpp
         ${KMP_DIRS}/*.cpp
 	${Robopara_DIRS}/*.cpp
+  ${QP_DIRS}/*.cpp
+  ${Eigen_qp_DIRS}/*.cpp
 )
 
 
@@ -91,7 +95,7 @@ FILE(GLOB SOURCES
 
 
 
-link_libraries(libfusion64.a)
+# link_libraries(libfusion64.a)
 link_libraries(libmosek64.so)
 link_libraries(libfusion64.so)
 

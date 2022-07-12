@@ -11,6 +11,7 @@ Use of this source code is governed by the MPL-2.0 license, see LICENSE.
 #include <unitree_legged_msgs/HighCmd.h>
 #include <unitree_legged_msgs/HighState.h>
 #include "convert.h"
+#include "sensor_msgs/JointState.h"
 
 using namespace UNITREE_LEGGED_SDK;
 
@@ -42,7 +43,16 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     unitree_legged_msgs::HighCmd SendHighROS;
     unitree_legged_msgs::HighState RecvHighROS;
 
+
+    // sensor_msgs::JointState joint2simulation, joint2simulationx;
+    // joint2simulation.position.resize(100);
+    // joint2simulationx.position.resize(100);
+
+
     roslcm.SubscribeState();
+
+    // gait_data_pub = n.advertise<sensor_msgs::JointState>("go1_gait_data",10);
+    // gait_data_pubx = n.advertise<sensor_msgs::JointState>("go1_gait_datax",10);      
 
     pthread_t tid;
     pthread_create(&tid, NULL, update_loop<TLCM>, &roslcm);
@@ -132,6 +142,35 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         if(motiontime>24000 ){
             SendHighROS.mode = 1;
         }
+
+        // ///********************* data saving ************************************///////
+        // joint2simulation.header.stamp = ros::Time::now();
+        // joint2simulationx.header.stamp = ros::Time::now();
+        // ////
+        // for(int j=0; j<12; j++){
+        //         joint2simulation.position[j] = SendLowROS.motorCmd[j].q; // desired joint angles; 
+        // }
+        // for(int j=0; j<12; j++)
+        // {
+        //     joint2simulation.position[12+j] = RecvLowROS.motorState[j].q;   // measured joint angles;
+        // } 
+
+
+        // // joint torque desired 
+        // for(int j=0; j<12; j++)
+        // {
+        //     joint2simulation.position[78+j] = SendLowROS.motorCmd[j].tau;
+        // }
+
+        // //// torque measured
+        // for(int j=0; j<12; j++)
+        // {
+        //     joint2simulationx.position[j] = RecvLowROS.motorState[j].tauEst;
+        // }
+
+        // gait_data_pub.publish(joint2simulation);
+        // gait_data_pubx.publish(joint2simulationx);
+
 
         SendHighLCM = ToLcm(SendHighROS, SendHighLCM);
         roslcm.Send(SendHighLCM);

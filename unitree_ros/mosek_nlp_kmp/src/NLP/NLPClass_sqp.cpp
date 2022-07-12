@@ -30,7 +30,8 @@ std::shared_ptr<ndarray<double,1>> ndou(const std::vector<double> &X) { return n
 
 
 NLPClass::NLPClass()
-    :_robot_name("")
+    : QPBaseClass()
+    ,_robot_name("")
     , _robot_mass(12)
     , _lift_height(0.03)
     , _method_flag(0)
@@ -117,6 +118,15 @@ void NLPClass::Initialize()
 	  kmp_leg_R.kmp_initialize(_data_kmp, _inDim_kmp, _outDim_kmp, _pvFlag_kmp,_lamda_kmp, _kh_kmp); // initialize kmp	  
 	}
 	
+  int nVars = 4;
+  int nEqCon = 1;
+  int nIneqCon = 24;
+  resizeQP(nVars, nEqCon, nIneqCon);    
+
+  cout << "finish!!!!!!!!!!! initial for nlp_KMP parameters"<<endl;
+
+
+
 //using !!! para variance: bipedal mode	and troting mode	 	
 	_steplength(14) = 0;
  	_steplength(15) *= -1;
@@ -226,7 +236,7 @@ void NLPClass::Initialize()
 	_comx_feed.setZero(); _comvx_feed.setZero(); _comax_feed.setZero();
 	_comy_feed.setZero(); _comvy_feed.setZero(); _comay_feed.setZero();
 	
-	_Vari_ini.setZero(); //Lxx,Lyy,Tr1,Tr2,Lxx1,Lyy1,Tr11,Tr21;
+	_Vari_ini.setZero(); //Lxx,Lyy,Tr1,Tr2;
 	_vari_ini.setZero();
 
 	
@@ -266,8 +276,8 @@ void NLPClass::Initialize()
 
         //weight coefficient: ball hit
         _aax = 50000;            _aay = 50000;
-       _aaxv = 100;             _aayv = 50;
-        _bbx = 2000000;         _bby = 80000000;
+       _aaxv = 1000;            _aayv = 500;
+        _bbx = 2000000;          _bby = 10000000;
         _rr1 = 1000000;          _rr2 = 1000000;  	
 
             //  foot location constraints 
@@ -717,10 +727,18 @@ Eigen::Matrix<double, 38, 1> NLPClass::step_timing_opti_loop(int i,Eigen::Matrix
   _tr1_ref = cosh(_Wn*_Tk);        _tr2_ref = sinh(_Wn*_Tk);
 
   // warm start
+  if(i==1)
+  {
     _vari_ini << _Lxx_refx,
                  _Lyy_refy,
                 _tr1_ref,
                 _tr2_ref;
+  }
+  else
+  {
+    _vari_ini = _Vari_ini.col(i-1);
+  }
+
 
  		 
 // step timing upper&lower boundaries  modification
@@ -755,7 +773,7 @@ Eigen::Matrix<double, 38, 1> NLPClass::step_timing_opti_loop(int i,Eigen::Matrix
 
   //cout <<  "ffffffffff "<<endl;
 // SEQUENCE QUADARTIC PROGRAMMING-step timing &step location optimization
-  for (int xxxx=1; xxxx<=1; xxxx++)
+  for (int xxxx=1; xxxx<=3; xxxx++)
   { 
     //// be careful the  divide / (one of the factor should be double: type)
 // // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -773,7 +791,21 @@ Eigen::Matrix<double, 38, 1> NLPClass::step_timing_opti_loop(int i,Eigen::Matrix
     if(_Tk >= 0.1*_ts(_periond_i-1))
     {
       solve_stepping_timing();
+
+      if (_X.rows() == 4)
+      {
+	      _vari_ini += _X;
+      }          
     }
+    else
+    {
+      _vari_ini << _Lxx_refx,
+                  _Lyy_refy,
+                  _tr1_ref,
+                  _tr2_ref;      
+    }
+
+  
     
   }
   
@@ -783,6 +815,72 @@ Eigen::Matrix<double, 38, 1> NLPClass::step_timing_opti_loop(int i,Eigen::Matrix
 // // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
   
   _Vari_ini.col(i) = _vari_ini;  
+
+// update the optimal parameter in the real-time: at the result, the effect of optimization reduced gradually
+// //////post procession//////////////////////
+//   if (_vari_ini(0,0)>_footx_max)
+//   {
+//    _vari_ini(0,0)  = _footx_max;
+//   }
+//   else
+//   {
+//     if (_vari_ini(0,0)<_footx_min)
+//     {
+//     _vari_ini(0,0)  = _footx_min;
+//     }    
+    
+//   }
+
+//   if ((abs(_vari_ini(0,0)-_Lxx_refx)>0.005)&&((_vari_ini(0,0)-_Lxx_refx)*_comvx_feed(i-1)<0))
+//   {
+//     _vari_ini(0,0) *= (-1);
+//   }
+  
+  
+//   if (_vari_ini(1,0)>_footy_max)
+//   {
+//    _vari_ini(1,0)  = _footy_max;
+//   }
+//   else
+//   {
+//     if (_vari_ini(1,0)<_footy_min)
+//     {
+//     _vari_ini(1,0)  = _footy_min;
+//     }    
+    
+//   }  
+  
+
+//   if (_vari_ini(2,0)>_tr1_max)
+//   {
+//    _vari_ini(2,0)  = _tr1_max;
+//    _vari_ini(3,0)  = _tr2_max;
+//   }
+//   else
+//   {
+//     if (_vari_ini(2,0)<_tr1_min)
+//     {
+//       _vari_ini(2,0)  = _tr1_min;
+//       _vari_ini(3,0)  = _tr2_min;
+//     }    
+    
+//   }  
+  
+//   if (_vari_ini(3,0)>_tr2_max)
+//   {
+//    _vari_ini(2,0)  = _tr1_max;
+//    _vari_ini(3,0)  = _tr2_max;
+//   }
+//   else
+//   {
+//     if (_vari_ini(3,0)<_tr2_min)
+//     {
+//       _vari_ini(2,0)  = _tr1_min;
+//       _vari_ini(3,0)  = _tr2_min;
+//     }
+//   }
+  
+
 
 // update the optimal parameter in the real-time: at the result, the effect of optimization reduced gradually
   _Lxx_ref(_periond_i-1) = _SS1*_vari_ini;
@@ -1063,8 +1161,8 @@ void NLPClass::step_timing_object_function(int i)
 	      -_rr1*_tr1_ref+_aax*_AxO(0,0)*_Cx(0,0)+_aay*_AyO(0,0)*_Cy(0,0)+_aaxv*_Axv(0,0)*_Cxv(0,0)+_aayv*_Ayv(0,0)*_Cyv(0,0),
 	      -_rr2*_tr2_ref+_aax*_BxO(0,0)*_Cx(0,0)+_aay*_ByO(0,0)*_Cy(0,0)+_aaxv*_Bxv(0,0)*_Cxv(0,0)+_aayv*_Byv(0,0)*_Cyv(0,0);   
 	      
-    _SQ_goal1 = _SQ_goal;
-    _Sq_goal1 = _Sq_goal;
+    _SQ_goal1 = 2 * _SQ_goal;
+    _Sq_goal1 = 2 * _SQ_goal * _vari_ini + _Sq_goal;
     
     // Matrix preparation
     _W_goal.block<4,4>(0,0) = _SQ_goal;
@@ -1077,27 +1175,36 @@ void NLPClass::step_timing_object_function(int i)
 void NLPClass::step_timing_constraints(int i)
 { 
 // // %% constraints 
-// tr1 & tr2: equation constraints: transformed into inequality constraints     
-    _trx12_up2 = _SS3.transpose()*_SS3-_SS4.transpose()*_SS4; 
-    _trx12_up1.setZero();
-    _det_trx12_up(0,0) = 1;
+// // tr1 & tr2: equation constraints: transformed into inequality constraints     
+//     _trx12_up2 = _SS3.transpose()*_SS3-_SS4.transpose()*_SS4; 
+//     _trx12_up1.setZero();
+//     _det_trx12_up(0,0) = 1;
     
-    _trx12_lp2 = -_trx12_up2;
-    _trx12_lp1.setZero();
-    _det_trx12_lp(0,0) = -1;    
+//     _trx12_lp2 = -_trx12_up2;
+//     _trx12_lp1.setZero();
+//     _det_trx12_lp(0,0) = -1;    
+
+   // tr1 & tr2: equation constraints:   
+    _trx12 = (2*(_SS3.transpose()*_SS3-_SS4.transpose()*_SS4)*_vari_ini).transpose();
+    _det_trx12 = -(_vari_ini.transpose()*(_SS3.transpose()*_SS3-_SS4.transpose()*_SS4)*_vari_ini);
+    _det_trx12(0,0) +=1;
   
 // // %% remaining time constraints: inequality constraints    
     _trx1_up = _SS3;
-    _det_trx1_up(0,0) =  _tr1_max; 
+    _det_trx1_up = -(_SS3*_vari_ini);
+    _det_trx1_up(0,0) +=  _tr1_max; 
 
     _trx1_lp = -_SS3; 
-    _det_trx1_lp(0,0) = -_tr1_min;  	
+    _det_trx1_lp = -(-_SS3*_vari_ini); 
+    _det_trx1_lp(0,0) -= _tr1_min;  	
 
     _trx2_up = _SS4;
-    _det_trx2_up(0,0) = _tr2_max;	
+    _det_trx2_up = -(_SS4*_vari_ini);
+    _det_trx2_up(0,0) += _tr2_max;	
 
-    _trx2_lp = -_SS4; 
-    _det_trx2_lp(0,0) = -_tr2_min;  	 
+    _trx2_lp = -_SS4;
+    _det_trx2_lp = -(-_SS4*_vari_ini);  
+    _det_trx2_lp(0,0) -= _tr2_min;   	 
     
     _trx.row(0) = _trx1_up; _trx.row(1) = _trx1_lp; _trx.row(2) = _trx2_up; _trx.row(3) = _trx2_lp;	
     
@@ -1112,7 +1219,7 @@ void NLPClass::step_timing_constraints(int i)
 	  if (i>=(round(2*_ts(1)/_dt))+1) ///update the footy_limit
 	  {
 	      
-            _footy_min=-(2*RobotPara_HALF_HIP_WIDTH + 0.03); 
+      _footy_min=-(2*RobotPara_HALF_HIP_WIDTH + 0.03); 
 // 	    _footy_max=-(RobotPara_HALF_HIP_WIDTH - 0.03); 
 	    _footy_max = -(RobotPara_FOOT_WIDTH+0.01);
 	  }
@@ -1126,14 +1233,14 @@ void NLPClass::step_timing_constraints(int i)
     { 
        if (i>=(round(2*_ts(1)/_dt))+1)
        {
-	_footy_max=2*RobotPara_HALF_HIP_WIDTH + 0.03; 
-// 	_footy_min=RobotPara_HALF_HIP_WIDTH - 0.03; 
-	_footy_min =RobotPara_FOOT_WIDTH+0.01;
+        _footy_max=2*RobotPara_HALF_HIP_WIDTH + 0.03; 
+      // 	_footy_min=RobotPara_HALF_HIP_WIDTH - 0.03; 
+        _footy_min =RobotPara_FOOT_WIDTH+0.01;
       }
        else
        {
-	_footy_max=2*RobotPara_HALF_HIP_WIDTH + 0.03; 
-	_footy_min=  RobotPara_HALF_HIP_WIDTH - 0.03; 	 
+        _footy_max=2*RobotPara_HALF_HIP_WIDTH + 0.03; 
+        _footy_min=  RobotPara_HALF_HIP_WIDTH - 0.03; 	 
       }     
       
     }
@@ -1157,13 +1264,13 @@ void NLPClass::step_timing_constraints(int i)
       _W_min = _footy_min - _lp;
       if ((_t_min -_k_yu*_dt)>=0.001)
       {
-	_cpy_max = -_lp / (exp(_Wn * _t_max)+1) + _W_max / (exp(2* _Wn*_t_min) - 1);
-	_cpy_min = -_lp / (exp(_Wn * _t_min)+1) + _W_max / (exp(2* _Wn*_t_min) - 1);
+        _cpy_max = -_lp / (exp(_Wn * _t_max)+1) + _W_max / (exp(2* _Wn*_t_min) - 1);
+        _cpy_min = -_lp / (exp(_Wn * _t_min)+1) + _W_max / (exp(2* _Wn*_t_min) - 1);
       }
       else
       {
-	_cpy_max = -_lp / (exp(_Wn * _t_max)+1) + _W_max / (exp(2* _Wn*(0.001 + _k_yu * _dt)) - 1);
-	_cpy_min = -_lp / (exp(_Wn * (0.001 + _k_yu * _dt))+1) + _W_max / (exp(2* _Wn*(0.001 + _k_yu * _dt)) - 1);	
+        _cpy_max = -_lp / (exp(_Wn * _t_max)+1) + _W_max / (exp(2* _Wn*(0.001 + _k_yu * _dt)) - 1);
+        _cpy_min = -_lp / (exp(_Wn * (0.001 + _k_yu * _dt))+1) + _W_max / (exp(2* _Wn*(0.001 + _k_yu * _dt)) - 1);	
       }
     }
     else
@@ -1173,28 +1280,32 @@ void NLPClass::step_timing_constraints(int i)
       _W_min = _footy_min - _lp;
       if ((_t_min -_k_yu*_dt)>=0.001)
       {
-	_cpy_max = -_lp / (exp(_Wn * _t_min)+1) + _W_max / (exp(2* _Wn*_t_min) - 1);
-	_cpy_min = -_lp / (exp(_Wn * _t_max)+1) + _W_max / (exp(2* _Wn*_t_min) - 1);
+        _cpy_max = -_lp / (exp(_Wn * _t_min)+1) + _W_max / (exp(2* _Wn*_t_min) - 1);
+        _cpy_min = -_lp / (exp(_Wn * _t_max)+1) + _W_max / (exp(2* _Wn*_t_min) - 1);
       }
       else
       {
-	_cpy_max = -_lp / (exp(_Wn * (0.001 + _k_yu * _dt))+1) + _W_max / (exp(2* _Wn*(0.001 + _k_yu * _dt)) - 1);
-	_cpy_min = -_lp / (exp(_Wn * _t_max)+1) + _W_max / (exp(2* _Wn*(0.001 + _k_yu * _dt)) - 1);	
+        _cpy_max = -_lp / (exp(_Wn * (0.001 + _k_yu * _dt))+1) + _W_max / (exp(2* _Wn*(0.001 + _k_yu * _dt)) - 1);
+        _cpy_min = -_lp / (exp(_Wn * _t_max)+1) + _W_max / (exp(2* _Wn*(0.001 + _k_yu * _dt)) - 1);	
       }      
     }
 
     // only the next one step
     _h_lx_up = _SS1;
-    _det_h_lx_up(0,0) = _footx_max;
+    _det_h_lx_up = -(_SS1*_vari_ini);
+    _det_h_lx_up(0,0) += _footx_max;
 
     _h_lx_lp = -_SS1;
-    _det_h_lx_lp(0,0) = -_footx_min;
+    _det_h_lx_lp = -(-_SS1*_vari_ini); 
+    _det_h_lx_lp(0,0) -= _footx_min;
 
     _h_ly_up = _SS2;
-    _det_h_ly_up(0,0) = _footy_max;
+    _det_h_ly_up = -(_SS2*_vari_ini);
+    _det_h_ly_up(0,0) += _footy_max;
 
     _h_ly_lp = -_SS2;
-    _det_h_ly_lp(0,0) = -_footy_min;         
+    _det_h_ly_lp = -(-_SS2*_vari_ini);
+    _det_h_ly_lp(0,0) -= _footy_min;        
 
     _h_lx_upx.row(0)= _h_lx_up;    _h_lx_upx.row(1)= _h_lx_lp;   _h_lx_upx.row(2)= _h_ly_up;     _h_lx_upx.row(3)= _h_ly_lp;
     _det_h_lx_upx.row(0)=_det_h_lx_up;  _det_h_lx_upx.row(1)=_det_h_lx_lp;  _det_h_lx_upx.row(2)=_det_h_ly_up;  _det_h_lx_upx.row(3)=_det_h_ly_lp;   
@@ -1202,24 +1313,24 @@ void NLPClass::step_timing_constraints(int i)
 // swing foot velocity boundary
     if (_k_yu ==0)
     {
-	_h_lvx_up.setZero();  _h_lvx_lp.setZero(); _h_lvy_up.setZero(); _h_lvy_lp.setZero();
-	_h_lvx_up1.setZero(); _h_lvx_lp1.setZero(); _h_lvy_up1.setZero(); _h_lvy_lp1.setZero();
-	_det_h_lvx_up.setZero();_det_h_lvx_lp.setZero();_det_h_lvy_up.setZero();_det_h_lvy_lp.setZero();
-	_det_h_lvx_up1.setZero();_det_h_lvx_lp1.setZero();_det_h_lvy_up1.setZero();_det_h_lvy_lp1.setZero();    
+      _h_lvx_up.setZero();  _h_lvx_lp.setZero(); _h_lvy_up.setZero(); _h_lvy_lp.setZero();
+      _h_lvx_up1.setZero(); _h_lvx_lp1.setZero(); _h_lvy_up1.setZero(); _h_lvy_lp1.setZero();
+      _det_h_lvx_up.setZero();_det_h_lvx_lp.setZero();_det_h_lvy_up.setZero();_det_h_lvy_lp.setZero();
+      _det_h_lvx_up1.setZero();_det_h_lvx_lp1.setZero();_det_h_lvy_up1.setZero();_det_h_lvy_lp1.setZero();    
     }                
     else
     {   
-	_h_lvx_up = _SS1;
-	_det_h_lvx_up(0,0) = -(-_Lxx_ref(_periond_i-1)- _footx_vmax*_dt);
+      _h_lvx_up = _SS1;
+      _det_h_lvx_up(0,0) = -(_SS1*_vari_ini-_Lxx_ref(_periond_i-1)- _footx_vmax*_dt);
 
-	_h_lvx_lp = -_SS1;
-	_det_h_lvx_lp(0,0) = -_Lxx_ref(_periond_i-1)-_footx_vmin*_dt; 
+      _h_lvx_lp = -_SS1;
+      _det_h_lvx_lp(0,0) = _SS1*_vari_ini-_Lxx_ref(_periond_i-1)-_footx_vmin*_dt; 
 
-	_h_lvy_up = _SS2;
-	_det_h_lvy_up(0,0) = -(-_Lyy_ref(_periond_i-1)- _footy_vmax*_dt);
+      _h_lvy_up = _SS2;
+      _det_h_lvy_up(0,0) = -(_SS2*_vari_ini-_Lyy_ref(_periond_i-1)- _footy_vmax*_dt);
 
-	_h_lvy_lp = -_SS2;
-	_det_h_lvy_lp(0,0) = -_Lyy_ref(_periond_i-1)-_footy_vmin*_dt;  
+      _h_lvy_lp = -_SS2;
+      _det_h_lvy_lp(0,0) = _SS2*_vari_ini-_Lyy_ref(_periond_i-1)-_footy_vmin*_dt;  
     }                                   
     _h_lvx_upx.row(0)= _h_lvx_up;    _h_lvx_upx.row(1)= _h_lvx_lp;  _h_lvx_upx.row(2)= _h_lvy_up;   _h_lvx_upx.row(3)= _h_lvy_lp;
     _det_h_lvx_upx.row(0)=_det_h_lvx_up; _det_h_lvx_upx.row(1)=_det_h_lvx_lp; _det_h_lvx_upx.row(2)=_det_h_lvy_up; _det_h_lvx_upx.row(3)=_det_h_lvy_lp;    
@@ -1235,16 +1346,16 @@ void NLPClass::step_timing_constraints(int i)
 
 
     _CoM_lax_up = _AA1x*_SS1+_AA2x*_SS3+(_AA3x-2*_comax_max)*_SS4;
-    _det_CoM_lax_up(0,0) = 0;
+    _det_CoM_lax_up = -(_AA1x*_SS1+_AA2x*_SS3+(_AA3x-2*_comax_max)*_SS4)*_vari_ini;
 
     _CoM_lax_lp = -_AA1x*_SS1-_AA2x*_SS3-(_AA3x-2*_comax_min)*_SS4;
-    _det_CoM_lax_lp(0,0) = 0;
-    
+    _det_CoM_lax_lp = -(-_AA1x*_SS1-_AA2x*_SS3-(_AA3x-2*_comax_min)*_SS4)*_vari_ini; 
+
     _CoM_lay_up = _AA1y*_SS2+_AA2y*_SS3+(_AA3y-2*_comay_max)*_SS4;
-    _det_CoM_lay_up(0,0) = 0;
+    _det_CoM_lay_up = -(_AA1y*_SS2+_AA2y*_SS3+(_AA3y-2*_comay_max)*_SS4)*_vari_ini;
 
     _CoM_lay_lp = -_AA1y*_SS2-_AA2y*_SS3-(_AA3y-2*_comay_min)*_SS4;
-    _det_CoM_lay_lp(0,0) = 0;      
+    _det_CoM_lay_lp = -(-_AA1y*_SS2-_AA2y*_SS3-(_AA3y-2*_comay_min)*_SS4)*_vari_ini;      
     
     _CoM_lax_upx.row(0) = _CoM_lax_up; _CoM_lax_upx.row(1) = _CoM_lax_lp; 
     _CoM_lax_upx.row(2) = _CoM_lay_up; _CoM_lax_upx.row(3) = _CoM_lay_lp;
@@ -1259,46 +1370,48 @@ void NLPClass::step_timing_constraints(int i)
     _VAA1y = _VAA*_Wn; _VAA2y = -2* _VAA*_VCCy*_Wn; _VAA3y = 2*_VBBy - 2*_comvy_feed(0,i-1);
 
     _CoM_lvx_up = _VAA1x*_SS1+_VAA2x*_SS3+(_VAA3x-2*_comax_max*_dt)*_SS4;
-    _det_CoM_lvx_up(0,0) = 0;
+    _det_CoM_lvx_up = -(_VAA1x*_SS1+_VAA2x*_SS3+(_VAA3x-2*_comax_max*_dt)*_SS4)*_vari_ini;
 
     _CoM_lvx_lp = -_VAA1x*_SS1-_VAA2x*_SS3-(_VAA3x-2*_comax_min*_dt)*_SS4;
-    _det_CoM_lvx_lp(0,0) = 0; 
+    _det_CoM_lvx_lp = -(-_VAA1x*_SS1-_VAA2x*_SS3-(_VAA3x-2*_comax_min*_dt)*_SS4)*_vari_ini; 
 
     _CoM_lvy_up = _VAA1y*_SS2+_VAA2y*_SS3+(_VAA3y-2*_comay_max*_dt)*_SS4;
-    _det_CoM_lvy_up(0,0) = 0;
+    _det_CoM_lvy_up = -(_VAA1y*_SS2+_VAA2y*_SS3+(_VAA3y-2*_comay_max*_dt)*_SS4)*_vari_ini;
 
     _CoM_lvy_lp = -_VAA1y*_SS2-_VAA2y*_SS3-(_VAA3y-2*_comay_min*_dt)*_SS4;
-    _det_CoM_lvy_lp(0,0) = 0;      
+    _det_CoM_lvy_lp = -(-_VAA1y*_SS2-_VAA2y*_SS3-(_VAA3y-2*_comay_min*_dt)*_SS4)*_vari_ini;      
     
     _CoM_lvx_upx.row(0) = _CoM_lvx_up; _CoM_lvx_upx.row(1) = _CoM_lvx_lp; 
     _CoM_lvx_upx.row(2) = _CoM_lvy_up; _CoM_lvx_upx.row(3) = _CoM_lvy_lp;
     _det_CoM_lvx_upx.row(0) = _det_CoM_lvx_up;  _det_CoM_lvx_upx.row(1) = _det_CoM_lvx_lp; 
     _det_CoM_lvx_upx.row(2) = _det_CoM_lvy_up;  _det_CoM_lvx_upx.row(3) = _det_CoM_lvy_lp;  
-
+    
+    
+    
 //   CoM intial velocity boundary: check   
     _VAA1x1 = _Wn; _VAA2x1 = -2*_VCCx*_Wn; _VAA3x1 = - 2*_comvx_feed(0,i-1); 
     _VAA1y1 = _Wn; _VAA2y1 = -2*_VCCy*_Wn; _VAA3y1 = - 2*_comvy_feed(0,i-1);
 
     /// modified!!!
     _CoM_lvx_up1 = _VAA1x1*_SS1+_VAA2x1*_SS3+(_VAA3x1-2*_comax_max*_dt)*_SS4;
-    _det_CoM_lvx_up1(0,0) = 0;
+    _det_CoM_lvx_up1 = -(_VAA1x1*_SS1+_VAA2x1*_SS3+(_VAA3x1-2*_comax_max*_dt/2.0)*_SS4)*_vari_ini;
 
     _CoM_lvx_lp1 = -_VAA1x1*_SS1-_VAA2x1*_SS3-(_VAA3x1-2*_comax_min*_dt)*_SS4;
-    _det_CoM_lvx_lp1(0,0) = 0; 
+    _det_CoM_lvx_lp1 = -(-_VAA1x1*_SS1-_VAA2x1*_SS3-(_VAA3x1-2*_comax_min*_dt/2.0)*_SS4)*_vari_ini; 
 
     _CoM_lvy_up1 = _VAA1y1*_SS2+_VAA2y1*_SS3+(_VAA3y1-2*_comay_max*_dt)*_SS4;
-    _det_CoM_lvy_up1(0,0) = 0;
+    _det_CoM_lvy_up1 = -(_VAA1y1*_SS2+_VAA2y1*_SS3+(_VAA3y1-2*_comay_max*_dt/2.0)*_SS4)*_vari_ini;
 
     _CoM_lvy_lp1 = -_VAA1y1*_SS2-_VAA2y1*_SS3-(_VAA3y1-2*_comay_min*_dt)*_SS4;
-    _det_CoM_lvy_lp1(0,0) = 0;      
+    _det_CoM_lvy_lp1 = -(-_VAA1y1*_SS2-_VAA2y1*_SS3-(_VAA3y1-2*_comay_min*_dt/2.0)*_SS4)*_vari_ini;      
     
     _CoM_lvx_upx1.row(0) = _CoM_lvx_up1; _CoM_lvx_upx1.row(1) = _CoM_lvx_lp1; 
     _CoM_lvx_upx1.row(2) = _CoM_lvy_up1; _CoM_lvx_upx1.row(3) = _CoM_lvy_lp1;
     _det_CoM_lvx_upx1.row(0) = _det_CoM_lvx_up1;  _det_CoM_lvx_upx1.row(1) = _det_CoM_lvx_lp1; 
-    _det_CoM_lvx_upx1.row(2) = _det_CoM_lvy_up1;  _det_CoM_lvx_upx1.row(3) = _det_CoM_lvy_lp1;      
+    _det_CoM_lvx_upx1.row(2) = _det_CoM_lvy_up1;  _det_CoM_lvx_upx1.row(3) = _det_CoM_lvy_lp1;         
     
   
-// DCM offset constraints:
+    // DCM offset constraints:!!!!! not using
     _cp_x_up2 = 0.5 * _SS1.transpose() * (_SS3 - _SS4);  
     _cp_x_up1 = -_cpx_max * _SS4.transpose();  
     _det_cp_x_up1(0,0) = _VCCx;  
@@ -1395,108 +1508,150 @@ void NLPClass::fun_sdr_affine_constraints()
 void NLPClass::solve_stepping_timing()
 {
   
-///// Mosek solution preparation
+// ///// Mosek solution preparation
     	  
-  fun_sdr_qudratic_constraints();
+//   fun_sdr_qudratic_constraints();
   
-  fun_sdr_affine_constraints();  
+//   fun_sdr_affine_constraints();  
   
-  // Objective function: min: tr<C,X>
-  //// Constraints: tr<A_i, X> =< B_i for i=1.....k; with A \in R(d*d), X \in R(d*d);  
-  int d_vari = 5, k_constraint = 32;
-  std::vector< std::shared_ptr<ndarray<double,2>> > A; 
-  std::vector< std::shared_ptr<ndarray<double,2>> > AX;
-  
-  
-  Model::t M = new Model(); auto _M = finally([&]() { M->dispose(); });
-  
-  Variable::t X_mosek = M->variable(Domain::inPSDCone(d_vari));
+//   // Objective function: min: tr<C,X>
+//   //// Constraints: tr<A_i, X> =< B_i for i=1.....k; with A \in R(d*d), X \in R(d*d);  
+//   int d_vari = 5, k_constraint = 32;
+//   std::vector< std::shared_ptr<ndarray<double,2>> > A; 
+//   std::vector< std::shared_ptr<ndarray<double,2>> > AX;
   
   
-  /////// obj
-  auto A_goali = std::make_shared<ndarray<double,2>>(shape(d_vari,d_vari));
-      for(int s1=0; s1<d_vari; s1++)
-	  for(int s2=0; s2<=s1; s2++)
-	      (*A_goali)(s1,s2) = (*A_goali)(s2,s1) = _W_goal(s1,s2);
+//   Model::t M = new Model(); auto _M = finally([&]() { M->dispose(); });
   
-  AX.push_back(A_goali);	  
-  M->objective(ObjectiveSense::Minimize, Expr::sum(Expr::mulElm(AX[0], X_mosek)));  
+//   Variable::t X_mosek = M->variable(Domain::inPSDCone(d_vari));
   
-  /// Constraints
-  for(int i=0; i<k_constraint; i++) {
-    Eigen::Matrix<double,5,5> A_temp;
-    A_temp.setZero();
-    if (i<8)
-    {
-      A_temp = cin_quad[i];
-    }
-    else
-    {
-      A_temp = cin_aff[i-8];
-    }
+  
+//   /////// obj
+//   auto A_goali = std::make_shared<ndarray<double,2>>(shape(d_vari,d_vari));
+//       for(int s1=0; s1<d_vari; s1++)
+// 	  for(int s2=0; s2<=s1; s2++)
+// 	      (*A_goali)(s1,s2) = (*A_goali)(s2,s1) = _W_goal(s1,s2);
+  
+//   AX.push_back(A_goali);	  
+//   M->objective(ObjectiveSense::Minimize, Expr::sum(Expr::mulElm(AX[0], X_mosek)));  
+  
+//   /// Constraints
+//   for(int i=0; i<k_constraint; i++) {
+//     Eigen::Matrix<double,5,5> A_temp;
+//     A_temp.setZero();
+//     if (i<8)
+//     {
+//       A_temp = cin_quad[i];
+//     }
+//     else
+//     {
+//       A_temp = cin_aff[i-8];
+//     }
     
-    auto Ai = std::make_shared<ndarray<double,2>>(shape(d_vari,d_vari));
-    for(int s1=0; s1<d_vari; s1++)
-	for(int s2=0; s2<=s1; s2++)
-	    (*Ai)(s1,s2) = (*Ai)(s2,s1) = A_temp(s1,s2);
-    A.push_back(Ai);
-  }
+//     auto Ai = std::make_shared<ndarray<double,2>>(shape(d_vari,d_vari));
+//     for(int s1=0; s1<d_vari; s1++)
+// 	for(int s2=0; s2<=s1; s2++)
+// 	    (*Ai)(s1,s2) = (*Ai)(s2,s1) = A_temp(s1,s2);
+//     A.push_back(Ai);
+//   }
   
   
-  for(int i=0; i<k_constraint; i++) {
-    if (i<8)
-    {
-      M->constraint(Expr::dot(A[i],X_mosek), Domain::lessThan(F_quadratci(i,0)));  
-    }
-    else
-    {
-      M->constraint(Expr::dot(A[i],X_mosek), Domain::lessThan(_b_q1(i-8,0)));  
-    }
-  }
+//   for(int i=0; i<k_constraint; i++) {
+//     if (i<8)
+//     {
+//       M->constraint(Expr::dot(A[i],X_mosek), Domain::lessThan(F_quadratci(i,0)));  
+//     }
+//     else
+//     {
+//       M->constraint(Expr::dot(A[i],X_mosek), Domain::lessThan(_b_q1(i-8,0)));  
+//     }
+//   }
   
    
-  /////
-  try{
+//   /////
+//   try{
     
-    M->solve();
+//     M->solve();
     
-    auto Xj = *(X_mosek->level());
-    auto xsize = X_mosek->getSize();
-    std::cout<< "X_mosek successful "<<endl;
-//     std::cout<< "X_mosek size: "<<Xj[23]<<endl;
+//     auto Xj = *(X_mosek->level());
+//     auto xsize = X_mosek->getSize();
+//     std::cout<< "X_mosek successful "<<endl;
+// //     std::cout<< "X_mosek size: "<<Xj[23]<<endl;
     
-    _vari_ini(0,0) = (double) Xj[20];
-    _vari_ini(1,0) = (double) Xj[21];
-    _vari_ini(2,0) = (double) Xj[22];
-    _vari_ini(3,0) = (double) Xj[23];    
-  }
-  catch(const OptimizeError& e)
-  { 
-    std::cout<< "optimization failed!!! Using the inital values"<<endl;
-    _vari_ini << _Lxx_refx,
-                 _Lyy_refy,
-		 _tr1_ref,
-		 _tr2_ref;    
-  }
-  catch(const SolutionError& e)
-  { 
-    std::cout<< "solution was not available!!! Using the inital values"<<endl;
-    _vari_ini << _Lxx_refx,
-                 _Lyy_refy,
-		 _tr1_ref,
-		 _tr2_ref;    
-  }
-  catch(const std::exception& e)
-  { 
-    std::cout<< "Unexpected error!!! Using the inital values"<<endl;
-    _vari_ini << _Lxx_refx,
-                 _Lyy_refy,
-		 _tr1_ref,
-		 _tr2_ref;    
-  }
-//   std::cout << "  _vari_ini = " << _vari_ini << std::endl;  
+//     _vari_ini(0,0) = (double) Xj[20];
+//     _vari_ini(1,0) = (double) Xj[21];
+//     _vari_ini(2,0) = (double) Xj[22];
+//     _vari_ini(3,0) = (double) Xj[23];    
+//   }
+//   catch(const OptimizeError& e)
+//   { 
+//     std::cout<< "optimization failed!!! Using the inital values"<<endl;
+//     _vari_ini << _Lxx_refx,
+//                  _Lyy_refy,
+// 		 _tr1_ref,
+// 		 _tr2_ref;    
+//   }
+//   catch(const SolutionError& e)
+//   { 
+//     std::cout<< "solution was not available!!! Using the inital values"<<endl;
+//     _vari_ini << _Lxx_refx,
+//                  _Lyy_refy,
+// 		 _tr1_ref,
+// 		 _tr2_ref;    
+//   }
+//   catch(const std::exception& e)
+//   { 
+//     std::cout<< "Unexpected error!!! Using the inital values"<<endl;
+//     _vari_ini << _Lxx_refx,
+//                  _Lyy_refy,
+// 		 _tr1_ref,
+// 		 _tr2_ref;    
+//   }
+// //   std::cout << "  _vari_ini = " << _vari_ini << std::endl;  
+
+
+//////// SQP /////////////////////////////////////////////////////////////
+/*  int nVars = 4;
+  int nEqCon = 1;
+  int nIneqCon = 24;
+  resizeQP(nVars, nEqCon, nIneqCon);*/	    
+
+  _G = _SQ_goal1;
+  _g0 = _Sq_goal1;
+  _X = _vari_ini;
+
+// min 0.5 * x G x + g0^T x
+// _s.t.
+// 		CE^T x + ce0 = 0   ///// equality constraints
+// 		CI^T x + ci0 >= 0  //// inequality constraints
+  _CI = _A_q1.transpose() * (-1);
+  
+  _ci0 = _b_q1;
+
+  
+  _CE = _trx12.transpose()*(-1);
+
+  _ce0 = _det_trx12;
+
+
+ 
+  Solve(); 
+}
+
+
+
+
+
+void NLPClass::Solve()
+{
+// min 0.5 * x G x + g0^T x
+// _s.t.
+// 		CE^T x + ce0 = 0
+// 		CI^T x + ci0 >= 0
+		solveQP();
 
 }
+
 
 //// each time: planer for foot_trajectory:
 void NLPClass::Foot_trajectory_solve(int j_index, bool _stopwalking)
