@@ -23,6 +23,15 @@ float dqDes[12] = {0};
 float dqDes_old[12] = {0}; 
 int ctrl_estimation = 1000;
 
+double base_offset_x = 0;
+double base_offset_y = 0; 
+double base_offset_z = 0;
+double base_offset_roll = 0;
+double base_offset_pitch =0;
+double base_offset_yaw = 0;
+
+
+
 
 template<typename TLCM>
 void* update_loop(void* param)
@@ -39,8 +48,8 @@ double jointLinearInterpolation(double initPos, double targetPos, double rate, i
     double p;
     rate = std::min(std::max(rate, 0.0), 1.0);
     p = initPos*(1-rate) + targetPos*rate;
-    dqDes[j] = 0.8*dqDes_old[j] + 0.2*(p - qDes[j])/(1.0/ctrl_estimation);
-    dqDes_old[j] = dqDes[j];
+    // dqDes[j] = 0.8*dqDes_old[j] + 0.2*(p - qDes[j])/(1.0/ctrl_estimation);
+    // dqDes_old[j] = dqDes[j];
     return p;
 }
 
@@ -49,8 +58,39 @@ void keyboard_model_callback(const geometry_msgs::Twist &msgIn) {
     
     if((msgIn.linear.x ==1)&&(gait_status = STAND_STATUS))
     {
-        cmd_gait = DYNAMIC;
+        cmd_gait = STAND_UP;
     }
+    if((msgIn.linear.x ==2)&&(gait_status = STAND_UP_STATUS))
+    {
+        cmd_gait = DYNAMIC;
+    }    
+}
+
+
+void Base_offset_callback(const geometry_msgs::Twist &msgIn) {
+    
+    // if((gait_status = STAND_STATUS)&&(stand_count>1000))
+    // {
+        base_offset_x = msgIn.linear.x;
+        base_offset_y = msgIn.linear.y;
+        base_offset_z = msgIn.linear.z;
+        base_offset_roll = msgIn.angular.x;
+        base_offset_pitch = msgIn.angular.y;
+        base_offset_yaw = msgIn.angular.z;
+    // }
+    // else
+    // {
+    //     if((gait_status = DYNAMIC_STATUS))
+    //     {
+    //         base_offset_x = msgIn.linear.x;
+    //         base_offset_y = msgIn.linear.y;
+    //         base_offset_z = msgIn.linear.z;
+    //         base_offset_roll = msgIn.angular.x;
+    //         base_offset_pitch = msgIn.angular.y;
+    //         base_offset_yaw = msgIn.angular.z;            
+    //     }
+
+    // }
 }
 
 
@@ -67,7 +107,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     ros::Publisher gait_data_pub; // for data_analysis
     ros::Publisher gait_data_pubx;  
-    ros::Subscriber key_board_cmd; //// for key board control
+    ros::Subscriber robot_mode_cmd; //// for robot mode selection
+    ros::Subscriber base_offset_cmd; //// for base offset modulation
 
 
     long motiontime=0;
@@ -92,7 +133,6 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     int count = 0;   
 
     int rate_count = 0;
-    int sin_count = 0;
     float qInit[12]={0};
 
     ////first configure
@@ -101,6 +141,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     float sin_mid_q[12] = {0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2};
     double sin_joint[12] = {0};
 
+    stand_count = 0;
+    stand_up_count = 0;
 
     /////// spring force forward compensation
 
@@ -114,7 +156,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     torque_err.setZero();
     torque_err_intergration.setZero();
-    Torque_ff.setZero();
+    Torque_ff_spring.setZero();
+    Torque_ff_GRF.setZero();
 
     FF_enable = false; ///// Before setting True, make sure the spring is engaged!!!!!!!!!!!!
     
@@ -197,7 +240,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     {
         if (gait_mode ==102) ///bipedal
         {
-            y_offset = 0.15;
+            y_offset = 0;
         }
         else
         { 
@@ -255,12 +298,16 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     // desired body posioin and rotation
     body_p_Homing.setZero();
+    // body_p_Homing_Retarget.setZero();
+    body_p_Homing_Retarget << 0,
+                              0,
+                           0.28;
     FR_foot_Homing.setZero();
     FL_foot_Homing.setZero();
     RR_foot_Homing.setZero();
     RL_foot_Homing.setZero();
 
-
+    body_r_homing.setZero();
     body_p_des.setZero();
     body_r_des.setZero();
     FR_foot_des.setZero(); 
@@ -281,11 +328,21 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     root_ang_vel.setZero();
     root_acc.setZero();
 
+    rate = 0;
+    ratex = 0;
+    rate_stand_up = 0;
+    q_ini.setZero();
+
     ////// Force distribution 
     F_sum.setZero();
     Momentum_sum << 2*0.0168352186, 2*0.0004636141, 2*0.0002367952,
                     2*0.0004636141, 2*0.0656071082, 2*3.6671e-05, 
                     2*0.0002367952, 2*3.6671e-05,   2*0.0742720659;
+    g_sum << 0,
+             0,
+            gait::_g;
+
+    F_sum = gait::mass * g_sum;
 
 
     rleg_com = 0; 
@@ -299,6 +356,10 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     RR_torque.setZero(); 
     RL_torque.setZero();  
     Legs_torque.setZero();   
+    FR_GRF.setZero();
+    FL_GRF.setZero();
+    RR_GRF.setZero();
+    RL_GRF.setZero();
 
     FR_swing = false; 
     FL_swing = false;
@@ -526,14 +587,11 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     n_period = round(gait::t_period / gait::t_program_cyclic); 
 
-
-
-
-
     roslcm.SubscribeState();
     gait_data_pub = n.advertise<sensor_msgs::JointState>("go1_gait_data",10);
     gait_data_pubx = n.advertise<sensor_msgs::JointState>("go1_gait_datax",10);    
-    key_board_cmd = n.subscribe("/Robot_mode", 1, &keyboard_model_callback);
+    robot_mode_cmd = n.subscribe("/Robot_mode", 1, &keyboard_model_callback);
+    base_offset_cmd = n.subscribe("/Base_offset", 1, &Base_offset_callback);
 
     pthread_t tid;
     pthread_create(&tid, NULL, update_loop<TLCM>, &roslcm);
@@ -561,9 +619,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         RecvLowROS = ToRos(RecvLowLCM);
         // printf("FR_1 position: %f\n",  RecvLowROS.motorState[FR_1].q);
         printf("FR force0: %f\n",  RecvLowROS.footForceEst[0]);
-        printf("FR force0: %f\n",  RecvLowROS.footForce[0]);
-        printf("FR force1: %f\n",  RecvLowROS.footForceEst[1]);
-        printf("FR force1: %f\n",  RecvLowROS.footForce[1]);
+        // printf("FR force0: %f\n",  RecvLowROS.footForce[0]);
+        // printf("FR force1: %f\n",  RecvLowROS.footForceEst[1]);
+        // printf("FR force1: %f\n",  RecvLowROS.footForce[1]);
 
         count_in_rt_ros += 1;
 
@@ -601,12 +659,6 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                                        RecvLowROS.imu.quaternion[1],
                                        RecvLowROS.imu.quaternion[2],
                                        RecvLowROS.imu.quaternion[3]); 
-        // printf("quaternion[0]: %f\n",  RecvLowROS.imu.quaternion[0]);
-        // printf("quaternion[1]: %f\n",  RecvLowROS.imu.quaternion[1]);
-        // printf("quaternion[2]: %f\n",  RecvLowROS.imu.quaternion[2]);
-        // printf("quaternion[3]: %f\n",  RecvLowROS.imu.quaternion[3]);
-
-
 
         // euler angle: roll pitch yaw
         root_rot_mat = root_quat.toRotationMatrix();
@@ -675,7 +727,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                         if( motiontime >= 500 && motiontime <= 1500){
                             // printf("%f %f %f\n", );
                             rate_count++;
-                            double rate = pow(rate_count/1000.0,2); 
+                            rate = pow(rate_count/1000.0,2); 
                             for(int j=0; j<12;j++)
                             {
                                 qDes[j] = jointLinearInterpolation(qInit[j], sin_mid_q[j], rate, 0);
@@ -721,29 +773,114 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                         break;
                     case STAND:
                         gait_status = STAND_STATUS;
-                        sin_count++;
+                        stand_count++;
 
-                        // sin_joint[0] = sin_joint[6] = 0.3 * sin(3*M_PI*sin_count/1000.0);
-                        // sin_joint[3] = sin_joint[9] = -0.3 * sin(3*M_PI*sin_count/1000.0);
+                        //////////////// for parameter tuning 
+                        // sin_joint[0] = sin_joint[6] = 0.3 * sin(3*M_PI*stand_count/1000.0);
+                        // sin_joint[3] = sin_joint[9] = -0.3 * sin(3*M_PI*stand_count/1000.0);
                         
-                        // sin_joint[1] = sin_joint[4] = 0.4 * sin(3*M_PI*sin_count/1000.0);
-                        // sin_joint[7] = sin_joint[10] = 0.4 * sin(3*M_PI*sin_count/1000.0);
+                        // sin_joint[1] = sin_joint[4] = 0.4 * sin(3*M_PI*stand_count/1000.0);
+                        // sin_joint[7] = sin_joint[10] = 0.4 * sin(3*M_PI*stand_count/1000.0);
                         
-                        //sin_joint[2] = sin_joint[5] = sin_joint[8] = sin_joint[11] = -0.4 * sin(3*M_PI*sin_count/1000.0);
+                        //sin_joint[2] = sin_joint[5] = sin_joint[8] = sin_joint[11] = -0.4 * sin(3*M_PI*stand_count/1000.0);
                         
+                        // for(int j=0; j<12;j++)
+                        // {
+                        //     qDes[j] = sin_mid_q[j] + sin_joint[j];
+                        // }
 
-                        for(int j=0; j<12;j++)
+                        ratex = pow(stand_count/1000.0,2); 
+                        if(ratex<=1000)
                         {
-                            qDes[j] = sin_mid_q[j] + sin_joint[j];
+                            for(int j=0; j<3;j++)
+                            {
+                                body_p_des[j] = jointLinearInterpolation(body_p_Homing(j,0), body_p_Homing_Retarget(j,0), ratex, 0);
+                                
+    
+
+                            }
+                            body_p_Homing = body_p_des;
+                            body_r_homing = body_r_des;
                         }
+                        else
+                        {   
+                            body_p_des[0] = body_p_Homing[0] + base_offset_x;
+                            body_p_des[1] = body_p_Homing[1] + base_offset_y;
+                            body_p_des[2] = body_p_Homing[2] + base_offset_z;
+                            body_r_des[0] = body_r_homing[0] + base_offset_roll;
+                            body_r_des[1] = body_r_homing[1] + base_offset_pitch;
+                            body_r_des[2] = body_r_homing[2] + base_offset_yaw;                            
+                        }
+
+                        ///cout << "xyyyy"<<endl;
+                        q_ini = FR_angle_des;
+                        FR_angle_des = Kine.Inverse_kinematics_g(body_p_des,body_r_des,FR_foot_des,q_ini,0);
+                        FR_Jaco = Kine.Jacobian_kin;
+
+                        q_ini = FL_angle_des;
+                        FL_angle_des = Kine.Inverse_kinematics_g(body_p_des,body_r_des,FL_foot_des,q_ini,1);
+                        FL_Jaco = Kine.Jacobian_kin;
+
+                        q_ini = RR_angle_des;
+                        RR_angle_des = Kine.Inverse_kinematics_g(body_p_des,body_r_des,RR_foot_des,q_ini,2);
+                        RR_Jaco = Kine.Jacobian_kin;
+
+                        q_ini = RL_angle_des;
+                        RL_angle_des = Kine.Inverse_kinematics_g(body_p_des,body_r_des,RL_foot_des,q_ini,3);  
+                        RL_Jaco = Kine.Jacobian_kin;                          
+
+                        qDes[0] = FR_angle_des(0,0);
+                        qDes[1] = FR_angle_des(1,0);
+                        qDes[2] = FR_angle_des(2,0);
+                        qDes[3] = FL_angle_des(0,0);
+                        qDes[4] = FL_angle_des(1,0);
+                        qDes[5] = FL_angle_des(2,0);
+                        qDes[6] = RR_angle_des(0,0);
+                        qDes[7] = RR_angle_des(1,0);
+                        qDes[8] = RR_angle_des(2,0);
+                        qDes[9] = RL_angle_des(0,0);
+                        qDes[10] = RL_angle_des(1,0);
+                        qDes[11] = RL_angle_des(2,0); 
 
 
                         break;
+                    case STAND_UP:
+                        gait_status = STAND_UP_STATUS;
+                        stand_up_count++;
+                        ///////// add GRF compensation///////////////
+                        FR_GRF = FL_GRF = F_sum / 2.0 * (body_p_des[0] - (RR_foot_des[0] + RL_foot_des[0])/2)/((FR_foot_des[0] + FL_foot_des[0])/2 - (RR_foot_des[0] + RL_foot_des[0])/2);
+                        RR_GRF = RL_GRF = F_sum / 2.0  - FR_GRF;
+
+                        Torque_ff_GRF.block<3,1>(0,0) = - FR_Jaco.transpose() *  FR_GRF;
+                        Torque_ff_GRF.block<3,1>(3,0) = - FL_Jaco.transpose() *  FL_GRF;
+                        Torque_ff_GRF.block<3,1>(6,0) = - RR_Jaco.transpose() *  RR_GRF;
+                        Torque_ff_GRF.block<3,1>(9,0) = - RL_Jaco.transpose() *  RL_GRF;                        
+
+
+                        rate_stand_up = pow(stand_up_count/1000.0,2); 
+                        for(int j=0; j<12;j++)
+                        {
+                            Torque_ff_GRF[j] = jointLinearInterpolation(0, Torque_ff_GRF(j,0), rate_stand_up, 0);
+                        }
+
+                        FR_swing = false; 
+                        FL_swing = false;
+                        RR_swing = false;
+                        RL_swing = false; 
+
+
+                        break;                        
                     case DYNAMIC:
+                        gait_status = DYNAMIC_STATUS;
+
+
                         break;
                     default:
                          break;
                 }
+
+
+              
 
                 /////////////// torque controller ///////////////////////
                 for(int j=0; j<12;j++)
@@ -758,13 +895,14 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                         {
                             qDes[j]=go1_Hip_max;
                         } 
+                        
+                        double hip_kp_scale = 1.2;
+                        double hip_scale = 1.1;
 
-                        if(j /3 ==1)
-                        {
-                            torq_kp_hip = 7;
-                            torq_kd_hip = 0.3;
-                            torq_ki_hip = 0.02; 
-                        }
+                        torq_kp_hip = 8 * hip_kp_scale;
+                        torq_kd_hip = 0.3 * hip_scale;
+                        torq_ki_hip = 0.02; 
+
                         //// hip joint tracking
                         torque_err.block<torque_err_row-1,1>(0,j) = torque_err.block<torque_err_row-1,1>(1,j);
 
@@ -782,16 +920,16 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                         ///// tuning the parameters carefully
                         if(qDes[j]<=k_p_rest_hip)
                         {
-                            Torque_ff(j,0) = k_spring_hip * (qDes[j] - (k_p_rest_hip));
+                            Torque_ff_spring(j,0) = k_spring_hip * (qDes[j] - (k_p_rest_hip));
                         }
                         else
                         {
-                            Torque_ff(j,0) = 0;
+                            Torque_ff_spring(j,0) = 0;
                         }
         
                         if(FF_enable)
                         {
-                            torque(j,0) += Torque_ff(j,0);
+                            torque(j,0) += Torque_ff_spring(j,0);
                         }  
                         
                         if((j / 3 ==0) ||(j / 3 ==2))
@@ -803,8 +941,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             torque(j,0) += (0.65f);
                         }
 
-                        if(torque(j,0) > 5.0f) torque(j,0) = 5.0f;
-                        if(torque(j,0) < -5.0f) torque(j,0) = -5.0f;
+                        if(torque(j,0) > 5.0f) torque(j,0) = 10.0f;
+                        if(torque(j,0) < -5.0f) torque(j,0) = -10.0f;
 
                     }
                     else
@@ -820,7 +958,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                                 qDes[j]=go1_Thigh_max;
                             }
 
-                            double kp_scale = 1;
+                            double thigh_kp_scale = 1;
                             double kd_scale = 0.65;
                             //// thigh joint tracking
                             if(j /3 ==0)
@@ -833,7 +971,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                                 // k_p_rest_thigh = 0.49;
                                 
                                 //// support leg
-                                torq_kp_thigh = 18 * kp_scale;
+                                torq_kp_thigh = 18 * thigh_kp_scale;
                                 torq_kd_thigh = 0.65 * kd_scale;
                                 torq_ki_thigh = 0.01;  
                                 k_spring_thigh = 11;                              
@@ -850,7 +988,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                                 // k_spring_thigh = 15;
                                 // k_p_rest_thigh = 0.41;
                                 //// support leg
-                                torq_kp_thigh = 18* kp_scale;
+                                torq_kp_thigh = 18* thigh_kp_scale;
                                 torq_kd_thigh = 0.65* kd_scale;
                                 torq_ki_thigh = 0.01;                                 
                                 k_spring_thigh = 15;
@@ -866,7 +1004,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                                 // k_spring_thigh = 19;
                                 // k_p_rest_thigh = 0.45;
                                 //// support leg
-                                torq_kp_thigh = 18* 1;
+                                torq_kp_thigh = 18* thigh_kp_scale;
                                 torq_kd_thigh = 0.65* 1;
                                 torq_ki_thigh = 0.01;                                 
                                 k_spring_thigh = 19;
@@ -884,7 +1022,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                                 // k_p_rest_thigh = 0.82;
 
                                 //// support leg
-                                torq_kp_thigh = 18* 1;
+                                torq_kp_thigh = 18* thigh_kp_scale;
                                 torq_kd_thigh = 0.65* 1;
                                 torq_ki_thigh = 0.01;                                 
                                 k_spring_thigh = 16;
@@ -908,18 +1046,18 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             //// ff control
                             // if(qDes[j]>=k_p_rest_thigh)
                             // {
-                            //     Torque_ff(j,0) = k_spring_thigh * (qDes[j] - (k_p_rest_thigh));
+                            //     Torque_ff_spring(j,0) = k_spring_thigh * (qDes[j] - (k_p_rest_thigh));
                             // }
                             // else
                             // {
-                            //     Torque_ff(j,0) = 0;
+                            //     Torque_ff_spring(j,0) = 0;
                             // }
                             //////// softplus funtion ///////////
-                            Torque_ff(j,0) = log(1+exp(k_spring_thigh*(qDes[j] - (k_p_rest_thigh))));
+                            Torque_ff_spring(j,0) = log(1+exp(k_spring_thigh*(qDes[j] - (k_p_rest_thigh))));
                 
                             if(FF_enable)
                             {
-                                torque(j,0) += Torque_ff(j,0);
+                                torque(j,0) += Torque_ff_spring(j,0);
                             }                             
 
                             if(torque(j,0) > 15.0f) torque(j,0) = 15.0f;
@@ -927,7 +1065,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                         }  
                         else
                         {
-                            double calf_kp_scal = 1.2;
+                            double calf_kp_scal = 1.5;
                             double calf_kd_scal = 1.2;
                             if(qDes[j]<=go1_Calf_min)
                             {
@@ -963,8 +1101,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             if(j /3 ==2)
                             {
                                 //// basic value is for swing leg
-                                torq_kp_calf = 9 * 1;
-                                torq_kd_calf = 0.31 * 1;
+                                torq_kp_calf = 9 * 1.5;
+                                torq_kd_calf = 0.31 * calf_kd_scal;
                                 torq_ki_calf = 0.01;                                  
                                 k_spring_calf = 6;
                                 k_p_rest_calf = -1.2;
@@ -972,8 +1110,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             if(j /3 ==3)
                             {
                                 //// basic value is for swing leg
-                                torq_kp_calf = 9 * 1;
-                                torq_kd_calf = 0.31 * 1;
+                                torq_kp_calf = 9 * 1.5;
+                                torq_kd_calf = 0.31 * calf_kd_scal;
                                 torq_ki_calf = 0.01;                                  
                                 k_spring_calf = 6;
                                 k_p_rest_calf = -1.45;
@@ -995,27 +1133,46 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             //// ff control
                             // if(qDes[j]<=k_p_rest_calf)
                             // {
-                            //     Torque_ff(j,0) = k_spring_calf * (qDes[j] - (k_p_rest_calf));
+                            //     Torque_ff_spring(j,0) = k_spring_calf * (qDes[j] - (k_p_rest_calf));
                             // }
                             // else
                             // {
-                            //     Torque_ff(j,0) = 0;
+                            //     Torque_ff_spring(j,0) = 0;
                             // }
 
                             //////// softplus funtion ///////////
-                            Torque_ff(j,0) = -log(1+exp(k_spring_calf*(-(qDes[j] - (k_p_rest_calf)))));
+                            Torque_ff_spring(j,0) = -log(1+exp(k_spring_calf*(-(qDes[j] - (k_p_rest_calf)))));
 
 
                             if(FF_enable)
                             {
-                                torque(j,0) += Torque_ff(j,0);
+                                torque(j,0) += Torque_ff_spring(j,0);
                             }
 
-                            if(torque(j,0) > 10.0f) torque(j,0) = 10.0f;
-                            if(torque(j,0) < -10.0f) torque(j,0) = -10.0f;
+                            if(torque(j,0) > 10.0f) torque(j,0) = 15.0f;
+                            if(torque(j,0) < -10.0f) torque(j,0) = -15.0f;
                         }                      
                     }
                 }
+                
+                /////// Grf feedforward control///////////
+                if(!FR_swing)
+                {
+                    torque.block<3,1>(0,0) += Torque_ff_GRF.block<3,1>(0,0);
+                }
+                if(!FL_swing)
+                {
+                    torque.block<3,1>(3,0) += Torque_ff_GRF.block<3,1>(3,0);
+                }
+                if(!RR_swing)
+                {
+                    torque.block<3,1>(6,0) += Torque_ff_GRF.block<3,1>(6,0);
+                }
+                if(!RL_swing)
+                {
+                    torque.block<3,1>(9,0) += Torque_ff_GRF.block<3,1>(9,0);
+                }
+
 
                 /////////////// send commanded torque to LCM ///////////////////////
                 for(int j=0; j<12;j++)
@@ -1119,13 +1276,13 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         /////// measured current
         for(int j=0; j<12; j++)
         {
-            joint2simulationx.position[12+j] = Torque_ff(j,0);
+            joint2simulationx.position[12+j] = Torque_ff_spring(j,0);
         }        
 
         gait_data_pub.publish(joint2simulation);
         gait_data_pubx.publish(joint2simulationx);
 
-        // // /////sending command //////////// 
+        // // // /////sending command //////////// 
         SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
         roslcm.Send(SendLowLCM);
 
@@ -1137,7 +1294,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
             count = 1000;
             initiated_flag = true;
         }
-
+        
+        ////// IMU drift calibration///////
         n_count++;  
         if(n_count==1001)
         {

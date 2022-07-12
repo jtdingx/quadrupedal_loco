@@ -48,6 +48,7 @@
 #define KEYCODE_6 54
 #define KEYCODE_7 55
 #define KEYCODE_8 56
+#define empty 100
       
 using namespace std;
 
@@ -64,8 +65,8 @@ int out_num = 0;
 double Robot_mode_sign = 0;
 double Dance_Pitch = 0, Dance_Roll = 0 , Dance_Yaw = 0;
 double Dance_Zside = 0, Dance_Xside = 0 , Dance_Yside = 0;
-double Robo_function , Push_num = 0;
-double nav_sign = 0;//nav_sign=1,进入导航控制模式
+double Robo_function , Push_num = 0,Push_num_old = 0;
+double nav_sign = 0;//nav_sign=1,navigation mode
 int    t_gait_cycle_set = 0;
 
 void JoyReceived(const sensor_msgs::Joy& joy)
@@ -83,13 +84,13 @@ void FunctionReceived(const geometry_msgs::Twist& Function_on)
 
 //ros::Subscriber sub = n.subscribe("joy", 10, JoyReceived);
 
-//  以下为键盘控制程序
+//  以下为键盘控制程序: keyboard control 
 class keyboard_controller  
 {  
     private:  
         geometry_msgs::Twist teleopkey;
         geometry_msgs::Twist Robot_mode;
-        geometry_msgs::Twist Dance_Pose;
+        geometry_msgs::Twist Base_offset;
         geometry_msgs::Twist cmd_to_joy;
         ros::NodeHandle n_;
         ros::Publisher pub_;   
@@ -102,7 +103,7 @@ class keyboard_controller
     {  
         pub_ = n_.advertise<geometry_msgs::Twist>("teleopkey", 1);  
         pub1_ = n_.advertise<geometry_msgs::Twist>("Robot_mode", 1); 
-        pub2_ = n_.advertise<geometry_msgs::Twist>("Dance_Pose", 1); 
+        pub2_ = n_.advertise<geometry_msgs::Twist>("Base_offset", 1); 
         pub3_ = n_.advertise<geometry_msgs::Twist>("cmd_to_joy", 1);
   //      sub1= n_.subscribe("Function_on", 10, FunctionReceived);
     }     
@@ -131,6 +132,14 @@ int main(int argc, char** argv)
     teleop.keyboardLoop(); 
     ros::spin();  
         
+    // Dance_Xside = 0;
+    // Dance_Yside = 0;
+    // Dance_Zside = 0;
+    // Dance_Roll = 0;
+    // Dance_Pitch = 0;
+    // Dance_Yaw = 0;  
+    // char_in = KEYCODE_SPACE; 
+
     return(0);  
 }  
       
@@ -145,6 +154,14 @@ void keyboard_controller::keyboardLoop()
     raw.c_cc[VEOL] = 1;  
     raw.c_cc[VEOF] = 2;  
     tcsetattr(kfd, TCSANOW, &raw);  
+
+
+    // Dance_Xside = 0;
+    // Dance_Yside = 0;
+    // Dance_Zside = 0;
+    // Dance_Roll = 0;
+    // Dance_Pitch = 0;
+    // Dance_Yaw = 0;     
    
     for(;;)  
     {  
@@ -166,8 +183,6 @@ void keyboard_controller::keyboardLoop()
              break;
             case KEYCODE_SPACE:  
                 Space = !Space; 
- //           if(Space==0)
- //               {	Re_start=0;	}
                 out_num = KEYCODE_SPACE;
             break;
             case  KEYCODE_a:
@@ -179,7 +194,7 @@ void keyboard_controller::keyboardLoop()
 	        	Direction=max(Direction-1,-5.0);
             out_num = KEYCODE_d;
             break;
-	        case  KEYCODE_w:
+	          case  KEYCODE_w:
 	       	    Direction=Direction; 
 	        	Speed=min(Speed+1,5.0);
             out_num = KEYCODE_w;
@@ -206,7 +221,7 @@ void keyboard_controller::keyboardLoop()
                 out_num = KEYCODE_x;
             break;
 
-    //==============  机器人模式  ===============
+    //==============  机器人模式 robot mode  ===============
             case  KEYCODE_0:
 	       	    Robot_mode_sign = 0;
                 Push_num    =   Push_num + 1;
@@ -271,54 +286,55 @@ void keyboard_controller::keyboardLoop()
             break;
 
 
-    //==============    跳舞指令    ======================
+    //==============    跳舞指令 dancing position offest command    ======================
             case  KEYCODE_A:
-	       	    Dance_Yside = Dance_Yside +1;
+                 
+              Dance_Yside +=  0.0001;
               out_num = KEYCODE_A;
             break;
             case  KEYCODE_D:
-	       	    Dance_Yside = Dance_Yside -1;
+	       	    Dance_Yside +=  -0.0001;
               out_num = KEYCODE_D;
             break;
             case  KEYCODE_W:
-	       	    Dance_Xside = Dance_Xside - 1;
+	       	    Dance_Xside +=   0.0001;
               out_num = KEYCODE_W;
             break;
             case  KEYCODE_S:
-	       	    Dance_Xside = Dance_Xside + 1;
+	       	    Dance_Xside +=  - 0.0001;
               out_num = KEYCODE_S;
             break;
             case  KEYCODE_Q:
-	       	    Dance_Zside = Dance_Zside + 1;
+	       	    Dance_Zside += 0.001;
               out_num = KEYCODE_Q;
             break;
             case  KEYCODE_E:
-	       	    Dance_Zside = Dance_Zside - 1;
+	       	    Dance_Zside +=  - 0.001;
               out_num = KEYCODE_E;
             break;
-            //===========   跳舞姿态角   ============
+            //===========   跳舞姿态角 dancing orientation command   ============
             case  KEYCODE_J:
-	       	    Dance_Roll = Dance_Roll +1;
+	       	    Dance_Roll +=  0.0001;
               out_num = KEYCODE_J;
             break;
             case  KEYCODE_L:
-	       	    Dance_Roll = Dance_Roll -1;
+	       	    Dance_Roll +=  -0.0001;
               out_num = KEYCODE_L;
             break;
             case  KEYCODE_I:
-	       	    Dance_Pitch = Dance_Pitch + 1;
+	       	    Dance_Pitch +=   0.0001;
               out_num = KEYCODE_I;
             break;
             case  KEYCODE_K:
-	       	    Dance_Pitch = Dance_Pitch - 1;
+	       	    Dance_Pitch +=  - 0.0001;
               out_num = KEYCODE_K;
             break;
             case  KEYCODE_U:
-	       	    Dance_Yaw = Dance_Yaw + 1;
+	       	    Dance_Yaw +=   0.0001;
               out_num = KEYCODE_U;
             break;
             case  KEYCODE_O:
-	       	    Dance_Yaw = Dance_Yaw - 1;
+	       	    Dance_Yaw +=  - 0.0001;
               out_num = KEYCODE_O;
             break;
 
@@ -334,7 +350,10 @@ void keyboard_controller::keyboardLoop()
             default:  
                 Space=Space;
                 Direction=Direction;
+ 
+                // ;
         }
+
 /*
         if(Robo_function == 1)
         Robot_mode_sign = 0;
@@ -358,12 +377,13 @@ void keyboard_controller::keyboardLoop()
     Robot_mode.angular.x = t_gait_cycle_set;
     pub1_.publish(Robot_mode);
 
-    Dance_Pose.linear.x  =   Dance_Xside;
-    Dance_Pose.linear.y  =   Dance_Yside;
-    Dance_Pose.linear.z  =   Dance_Zside;
-    Dance_Pose.angular.x =   Dance_Roll;
-    Dance_Pose.angular.y =   Dance_Pitch;
-    Dance_Pose.angular.z =   Dance_Yaw;
-    pub2_.publish(Dance_Pose);
+    Base_offset.linear.x  =   Dance_Xside;
+    Base_offset.linear.y  =   Dance_Yside;
+    Base_offset.linear.z  =   Dance_Zside;
+    Base_offset.angular.x =   Dance_Roll;
+    Base_offset.angular.y =   Dance_Pitch;
+    Base_offset.angular.z =   Push_num;
+    pub2_.publish(Base_offset);
+    
     }  
 }  

@@ -34,8 +34,8 @@ using namespace UNITREE_LEGGED_SDK;
 typedef enum {
     STAND_INIT = 100,
     STAND = 101,
-    DYNAMIC  = 102,
-    ARM_OPERATION = 103,
+    STAND_UP  = 102,
+    DYNAMIC = 103,
     UP_STAIR = 104,
     DOWN_STAIR = 105,
     PLAY_FOOTBALL = 106,
@@ -48,8 +48,8 @@ typedef enum {
 typedef enum {
     STAND_INIT_STATUS = 200,
     STAND_STATUS = 201,
-    DYNAMIC_STATUS = 202,
-    ARM_OPERATION_STATUS = 203,
+    STAND_UP_STATUS = 202,
+    DYNAMIC_STATUS = 203,
     UP_STAIR_STATUS = 204,
     DOWN_STAIR_STATUS = 205,
     PLAY_FOOTBALL_STATUS = 206,
@@ -65,6 +65,10 @@ typedef enum {
 CmdGait cmd_gait;
 GaitStatus gait_status;
 
+
+
+
+
 const int torque_err_row = 500;
 ////// initial parameters for joint-tracking
 double torq_kp_calf, torq_kd_calf, torq_ki_calf;
@@ -72,7 +76,7 @@ double torq_kp_thigh, torq_kd_thigh, torq_ki_thigh;
 double torq_kp_hip, torq_kd_hip, torq_ki_hip;
 Eigen::Matrix<double, torque_err_row,12> torque_err;
 Eigen::Matrix<double, 12,1>  torque_err_intergration;
-Eigen::Matrix<double, 12,1> Torque_ff; 
+Eigen::Matrix<double, 12,1> Torque_ff_spring,Torque_ff_GRF; 
 
 /////// spring constant here
 bool FF_enable;
@@ -99,7 +103,7 @@ Dynamiccclass Dynam;
 
 
 /////////////*******************8 robot state ******************************************///////////////////////
-Eigen::Matrix<double,3,1> body_p_Homing, body_p_des, body_r_des;
+Eigen::Matrix<double,3,1> body_p_Homing, body_p_Homing_Retarget, body_p_des, body_r_des,body_r_homing;
 Eigen::Matrix<double,3,1> FR_foot_des, FL_foot_des,RR_foot_des, RL_foot_des;
 Eigen::Matrix<double,3,1> FR_foot_Homing, FL_foot_Homing,RR_foot_Homing, RL_foot_Homing;
 Eigen::Matrix<double,3,1> body_p_est, body_r_est;
@@ -134,9 +138,15 @@ Eigen::Vector3d root_ang_vel;
 Eigen::Vector3d root_acc;
 
 
+double ratex,rate,rate_stand_up;
+Eigen::Matrix<double,3,1>  q_ini;
+
+
+int stand_count,stand_up_count;
+
 /////////////////////////////////////////************* Force distribution **********************/////////////////////////////////////////
 ////// Force distribution 
-Eigen::Vector3d F_sum;
+Eigen::Vector3d F_sum, g_sum;
 Eigen::Matrix3d Momentum_sum;
 
 double rleg_com, lleg_com;
@@ -146,6 +156,12 @@ bool FR_swing,FL_swing,RR_swing,RL_swing;
 int bjx1;
 Eigen::Matrix<double, 3,1>  FR_torque,FL_torque,RR_torque,RL_torque;
 Eigen::Matrix<double, 12,1> Legs_torque;
+
+Eigen::Matrix<double, 3,1> FR_GRF, FL_GRF, RR_GRF, RL_GRF;
+
+
+
+
 
 
 
