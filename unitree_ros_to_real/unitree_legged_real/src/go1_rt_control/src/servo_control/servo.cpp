@@ -282,7 +282,7 @@ int main(int argc, char **argv)
     {
         if (gait_mode ==102) ///bipedal
         {
-            y_offset = 0.15;
+            y_offset = 0;
         }
         else
         { 
@@ -1084,10 +1084,31 @@ int main(int argc, char **argv)
 
 
 
-            double com_rleg_dis = sqrt(pow(com_des[0]-rfoot_des[0], 2) + pow(com_des[1]-rfoot_des[1], 2) + pow(com_des[2]-rfoot_des[2], 2));
-            double com_lleg_dis = sqrt(pow(com_des[0]-lfoot_des[0], 2) + pow(com_des[1]-lfoot_des[1], 2) + pow(com_des[2]-lfoot_des[2], 2));
-            rleg_com = com_rleg_dis/(com_rleg_dis + com_lleg_dis);
-            lleg_com = 1 - rleg_com;
+            // double com_rleg_dis = sqrt(pow(com_des[0]-rfoot_des[0], 2) + pow(com_des[1]-rfoot_des[1], 2) + pow(com_des[2]-rfoot_des[2], 2));
+            // double com_lleg_dis = sqrt(pow(com_des[0]-lfoot_des[0], 2) + pow(com_des[1]-lfoot_des[1], 2) + pow(com_des[2]-lfoot_des[2], 2));
+            
+            Eigen::Vector3d vec_foot_rl;
+            vec_foot_rl << lfoot_des[0] - rfoot_des[0],
+                           lfoot_des[1] - rfoot_des[1],
+                           lfoot_des[2] - rfoot_des[2];
+
+            Eigen::Vector3d vec_com_rfoot;
+            vec_com_rfoot << com_des[0] - rfoot_des[0],
+                           com_des[1] - rfoot_des[1],
+                           com_des[2] - rfoot_des[2];                          
+
+            double rlleg_dis = sqrt(pow(vec_foot_rl[0], 2) + pow(vec_foot_rl[1], 2) + pow(vec_foot_rl[2], 2));
+            double com_rleg_dis = vec_foot_rl[0]*vec_com_rfoot[0] + vec_foot_rl[1]*vec_com_rfoot[1] + vec_foot_rl[2]*vec_com_rfoot[2];
+            double rleg_com_raw = com_rleg_dis /rlleg_dis;
+            double rleg_com_raw1 = std::min(rleg_com_raw,1.0);
+            rleg_com = std::max(rleg_com_raw1,0.0);
+
+            lleg_com = 1 - rleg_com;            
+
+            // double com_rleg_dis = sqrt(pow(com_des[0]-rfoot_des[0], 2) + pow(com_des[1]-rfoot_des[1], 2) + pow(com_des[2]-rfoot_des[2], 2));
+            // double com_lleg_dis = sqrt(pow(com_des[0]-lfoot_des[0], 2) + pow(com_des[1]-lfoot_des[1], 2) + pow(com_des[2]-lfoot_des[2], 2));
+            // rleg_com = com_rleg_dis/(com_rleg_dis + com_lleg_dis);
+            // lleg_com = 1 - rleg_com;
 
 
             if(right_support == 0) ////left support
@@ -1192,7 +1213,7 @@ int main(int argc, char **argv)
                 Force_L_R(j) = F_lr_predict(j);
             }                                
             
-            Dynam.force_distribution(body_p_des,leg_position, Force_L_R, gait_mode, y_offset);
+            Dynam.force_distribution(body_p_des,leg_position, Force_L_R, gait_mode, y_offset,rfoot_des,lfoot_des);
 
             // cout<<"right_support:"<<right_support<<endl;
             Dynam.force_opt(body_p_des,FR_foot_des, FL_foot_des, RR_foot_des, RL_foot_des,

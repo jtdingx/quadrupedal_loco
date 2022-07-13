@@ -106,6 +106,8 @@ set(RTControl_DIRS ${SRC_PATH_NLP}/NLPRTControl)
 set(NLP_DIRS ${SRC_PATH_NLP}/NLP)
 set(KMP_DIRS ${SRC_PATH_NLP}/KMP)
 set(Robopara_DIRS ${SRC_PATH_NLP}/Robotpara)
+set(Qp_DIRS ${SRC_PATH_NLP}/QP)
+set(EigenQp_DIRS ${SRC_PATH_NLP}/utils/EiQuadProg)
 
 #find_package(Armadillo 4.0 REQUIRED)
 #include_directories(${ARMADILLO_INCLUDE_DIRS})
@@ -115,31 +117,35 @@ set(Robopara_DIRS ${SRC_PATH_NLP}/Robotpara)
 #################################
 #set(armaLIBRARIES armadillo)
 
-# FILE(GLOB SOURCES
-# 	${RTControl_DIRS}/*.cpp
-# 	${NLP_DIRS}/NLPClass.cpp
-#     # ${KMP_DIRS}/*.cpp
-# 	${Robopara_DIRS}/*.cpp
-# )
+
 
 # link_libraries(libfusion64.a)
 # link_libraries(libmosek64.so)
 # link_libraries(libfusion64.so)
 
-# add_executable(mosek_nlp_kmp_node ${SRC_PATH_NLP}/gait_nlp_kmp.cpp
-#                 ${SOURCES}
-#                 )
 
-# add_dependencies(mosek_nlp_kmp_node
-#         ${${PROJECT_NAME}_EXPORTED_TARGETS}
-#         ${catkin_EXPORTED_TARGETS}
-# )
+FILE(GLOB SOURCES
+	${RTControl_DIRS}/*.cpp
+	${NLP_DIRS}/NLPClass_sqp.cpp
+    # ${KMP_DIRS}/*.cpp
+	${Robopara_DIRS}/*.cpp
+    ${Qp_DIRS}/*.cpp
+    ${EigenQp_DIRS}/*.cpp
+)
+add_executable(mosek_nlp_kmp_node ${SRC_PATH_NLP}/gait_nlp_kmp.cpp
+                ${SOURCES}
+                )
+
+add_dependencies(mosek_nlp_kmp_node
+        ${${PROJECT_NAME}_EXPORTED_TARGETS}
+        ${catkin_EXPORTED_TARGETS}
+)
 
 
-#  target_link_libraries(mosek_nlp_kmp_node
-#    ${${PROJECT_NAME}_EXPORTED_TARGETS}
-#    ${catkin_LIBRARIES}
-# #    ${armaLIBRARIES}
-#  )
+ target_link_libraries(mosek_nlp_kmp_node
+   ${${PROJECT_NAME}_EXPORTED_TARGETS}
+   ${catkin_LIBRARIES}
+#    ${armaLIBRARIES}
+ )
 
 

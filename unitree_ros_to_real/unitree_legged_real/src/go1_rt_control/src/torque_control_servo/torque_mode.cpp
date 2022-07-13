@@ -30,6 +30,12 @@ double base_offset_roll = 0;
 double base_offset_pitch =0;
 double base_offset_yaw = 0;
 
+double base_offset_x_old = 0;
+double base_offset_y_old = 0; 
+double base_offset_z_old = 0;
+double base_offset_roll_old = 0;
+double base_offset_pitch_old =0;
+double base_offset_yaw_old = 0;
 
 
 
@@ -91,6 +97,24 @@ void Base_offset_callback(const geometry_msgs::Twist &msgIn) {
     //     }
 
     // }
+}
+
+double clamp_func(double new_cmd, double old_cmd, double thresh)
+{
+    double ref_cmd = new_cmd;
+    if(new_cmd - old_cmd > abs(thresh))
+    {
+       ref_cmd = old_cmd + abs(thresh);
+    }
+    else
+    {
+        if(new_cmd - old_cmd < -abs(thresh))
+        {
+            ref_cmd = old_cmd - abs(thresh);
+        }
+    }
+    return ref_cmd;
+
 }
 
 
@@ -699,8 +723,13 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
             RL_v_est_relative = (RL_foot_relative_mea - RL_foot_relative_mea_old)/dtx;            
         }
 
-
-
+        // ============== Key board controller ======================
+        base_offset_x = clamp_func(base_offset_x,base_offset_x_old, 0.002);
+        base_offset_y = clamp_func(base_offset_y,base_y_roll_old, 0.002);
+        base_offset_z = clamp_func(base_offset_z,base_offset_z_old, 0.002);        
+        base_offset_pitch = clamp_func(base_offset_pitch,base_offset_pitch_old, 0.002);
+        base_offset_roll = clamp_func(base_offset_roll,base_offset_roll_old, 0.002);
+        base_offset_yaw = clamp_func(base_offset_yaw,base_offset_yaw_old, 0.002);
 
 
 
@@ -804,6 +833,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                         }
                         else
                         {   
+
                             body_p_des[0] = body_p_Homing[0] + base_offset_x;
                             body_p_des[1] = body_p_Homing[1] + base_offset_y;
                             body_p_des[2] = body_p_Homing[2] + base_offset_z;
@@ -1198,6 +1228,13 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
         }
 
+
+        base_offset_x_old = base_offset_x;
+        base_offset_y_old = base_offset_y; 
+        base_offset_z_old = base_offset_z;
+        base_offset_roll_old = base_offset_roll;
+        base_offset_pitch_old = base_offset_pitch;
+        base_offset_yaw_old = base_offset_yaw;
 
         ///********************* data saving & publisher ************************************///////
         joint2simulation.header.stamp = ros::Time::now();

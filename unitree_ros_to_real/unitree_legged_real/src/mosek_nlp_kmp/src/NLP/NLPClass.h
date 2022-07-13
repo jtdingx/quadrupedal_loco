@@ -90,8 +90,8 @@ public:
 	Vector3d XGetSolution_Foot_positionR(int walktime, double dt_sample, Eigen::Vector3d body_in1, Eigen::Vector3d body_in2, Eigen::Vector3d body_in3);
 	Vector3d XGetSolution_Foot_positionL(int walktime, double dt_sample, Eigen::Vector3d body_in1, Eigen::Vector3d body_in2, Eigen::Vector3d body_in3);	
 	Vector3d XGetSolution_body_inclination(int walktime, double dt_sample, Eigen::Vector3d body_in1, Eigen::Vector3d body_in2, Eigen::Vector3d body_in3);
-	// Eigen::Matrix<double,6,1> XGetSolution_Foot_position_KMP(int walktime, double dt_sample, int j_index);
-	// Eigen::Matrix<double,6,1> XGetSolution_Foot_position_KMP_faster(int walktime, double dt_sample, int j_index);
+	Eigen::Matrix<double,6,1> XGetSolution_Foot_position_KMP(int walktime, double dt_sample, int j_index);
+	Eigen::Matrix<double,6,1> XGetSolution_Foot_position_KMP_faster(int walktime, double dt_sample, int j_index);
 	
 	
 	
@@ -369,7 +369,8 @@ private:
 		
 	void fun_sdr_qudratic_constraints();
 	void fun_sdr_affine_constraints();
-
+    
+	void Solve();
 	
 	/// for foot trajectory generation
 	Eigen::Matrix<double,_nh,1> _t_f;	

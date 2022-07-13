@@ -92,14 +92,14 @@ int main(int argc, char *argv[])
         ros::Time start = ros::Time::now(); 
 
         
-        if (state_feedback_receieved(0) > 0)
-        {
-            mpc_start =true;
-            count += 1;
-        }
+        // if (state_feedback_receieved(0) > 0)
+        // {
+        //     mpc_start =true;
+        //     count += 1;
+        // }
 
-        // mpc_start =true;
-        // count += 1;        
+        mpc_start =true;
+        count += 1;        
 
         ///// input: obtained from the ros::subscriber
         /////////// time interval

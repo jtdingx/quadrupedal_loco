@@ -19,7 +19,6 @@ Edited by Jiatao Ding, email: jtdingx@gmail.com
 #include <string>
 #include <math.h>
 #include <nav_msgs/Odometry.h>
-//#include "body.h"
 #include <Eigen/Dense>
 #include "QP/QPBaseClass.h"
 
@@ -59,7 +58,7 @@ class Dynamiccclass : public QPBaseClass
         void force_distribution(Eigen::Matrix<double, 3,1> com_des,
                                 Eigen::Matrix<double, 12,1> leg_des, 
                                 Eigen::Matrix<double, 6,1> F_force_des, 
-                                int mode, double y_coefficient);      
+                                int mode, double y_coefficient, double rfoot_des[3],double lfoot_des[3]);      
 
         void force_opt(Eigen::Matrix<double, 3,1> base_p,
                        Eigen::Matrix<double, 3,1> FR_p, 

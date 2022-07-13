@@ -289,19 +289,19 @@ void keyboard_controller::keyboardLoop()
     //==============    跳舞指令 dancing position offest command    ======================
             case  KEYCODE_A:
                  
-              Dance_Yside +=  0.0001;
+              Dance_Yside +=  0.001;
               out_num = KEYCODE_A;
             break;
             case  KEYCODE_D:
-	       	    Dance_Yside +=  -0.0001;
+	       	    Dance_Yside +=  -0.001;
               out_num = KEYCODE_D;
             break;
             case  KEYCODE_W:
-	       	    Dance_Xside +=   0.0001;
+	       	    Dance_Xside +=   0.001;
               out_num = KEYCODE_W;
             break;
             case  KEYCODE_S:
-	       	    Dance_Xside +=  - 0.0001;
+	       	    Dance_Xside +=  - 0.001;
               out_num = KEYCODE_S;
             break;
             case  KEYCODE_Q:
@@ -314,27 +314,27 @@ void keyboard_controller::keyboardLoop()
             break;
             //===========   跳舞姿态角 dancing orientation command   ============
             case  KEYCODE_J:
-	       	    Dance_Roll +=  0.0001;
+	       	    Dance_Roll +=  0.001;
               out_num = KEYCODE_J;
             break;
             case  KEYCODE_L:
-	       	    Dance_Roll +=  -0.0001;
+	       	    Dance_Roll +=  -0.001;
               out_num = KEYCODE_L;
             break;
             case  KEYCODE_I:
-	       	    Dance_Pitch +=   0.0001;
+	       	    Dance_Pitch +=   0.001;
               out_num = KEYCODE_I;
             break;
             case  KEYCODE_K:
-	       	    Dance_Pitch +=  - 0.0001;
+	       	    Dance_Pitch +=  - 0.001;
               out_num = KEYCODE_K;
             break;
             case  KEYCODE_U:
-	       	    Dance_Yaw +=   0.0001;
+	       	    Dance_Yaw +=   0.001;
               out_num = KEYCODE_U;
             break;
             case  KEYCODE_O:
-	       	    Dance_Yaw +=  - 0.0001;
+	       	    Dance_Yaw +=  - 0.001;
               out_num = KEYCODE_O;
             break;
 
