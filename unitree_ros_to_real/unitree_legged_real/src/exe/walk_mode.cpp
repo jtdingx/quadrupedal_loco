@@ -61,6 +61,11 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         motiontime = motiontime+2;
         roslcm.Get(RecvHighLCM);
         RecvHighROS = ToRos(RecvHighLCM);
+        printf("fr leg force: %d\n",RecvHighROS.footForce[0]);
+        printf("fr leg force_est: %d\n",RecvHighROS.footForceEst[1]);
+        printf("fl leg force: %d\n",RecvHighROS.footForce[2]);
+        printf("fl leg force_est: %d\n",RecvHighROS.footForceEst[3]);
+        //printf("body height: %f\n",RecvHighROS.bodyHeight);
 
         SendHighROS.mode = 0;      
         SendHighROS.gaitType = 0;

@@ -21,6 +21,7 @@
         "any": "cpp",
         "string_view": "cpp",
         "regex": "cpp",
-        "type_traits": "cpp"
+        "type_traits": "cpp",
+        "iostream": "cpp"
     }
 }

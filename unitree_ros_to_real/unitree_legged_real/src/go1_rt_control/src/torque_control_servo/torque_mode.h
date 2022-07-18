@@ -23,7 +23,7 @@ Use of this source code is governed by the MPL-2.0 license, see LICENSE.
 #include "geometry_msgs/Twist.h"
 
 #include "utils/filter.hpp"
-
+#include "go1_const.h"
 
 
 
@@ -82,7 +82,11 @@ Eigen::Matrix<double, 12,1> Torque_ff_spring,Torque_ff_GRF;
 bool FF_enable;
 double k_spring_calf,k_spring_thigh,k_spring_hip;
 double k_p_rest_calf,k_p_rest_thigh,k_p_rest_hip;
+double hip_kp_scale, thigh_kp_scale, calf_kp_scale;
+double hip_kd_scale, thigh_kd_scale, calf_kd_scale;
 
+/////impedance control here
+Eigen::Matrix<double, 3,3>  swing_kp, swing_kd;
 
 //// torque control mode
 Eigen::Matrix<double, 12,1>  torque;
@@ -103,10 +107,11 @@ Dynamiccclass Dynam;
 
 
 /////////////*******************8 robot state ******************************************///////////////////////
-Eigen::Matrix<double,3,1> body_p_Homing, body_p_Homing_Retarget, body_p_des, body_r_des,body_r_homing;
+Eigen::Matrix<double,3,1> body_p_Homing, body_p_Homing_Retarget,body_p_Homing_dynamic, body_p_des, body_r_des,body_r_homing,body_r_Homing_dynamic;
 Eigen::Matrix<double,3,1> FR_foot_des, FL_foot_des,RR_foot_des, RL_foot_des;
 Eigen::Matrix<double,3,1> FR_foot_Homing, FL_foot_Homing,RR_foot_Homing, RL_foot_Homing;
 Eigen::Matrix<double,3,1> body_p_est, body_r_est;
+Eigen::Matrix<double,12,1> leg_position;
 
 
 Eigen::Matrix<double,3,1> FR_angle_des, FL_angle_des,RR_angle_des, RL_angle_des;
@@ -114,7 +119,7 @@ Eigen::Matrix<double,3,1> FR_angle_mea, FL_angle_mea,RR_angle_mea, RL_angle_mea;
 Eigen::Matrix<double,3,1> FR_dq_mea, FL_dq_mea,RR_dq_mea, RL_dq_mea;
 Eigen::Matrix<double,12,1> angle_des;
 
-
+Eigen::Matrix<double,3,1> FR_foot_mea, FL_foot_mea,RR_foot_mea, RL_foot_mea;
 Eigen::Matrix<double,3,1> FR_foot_relative_des, FL_foot_relative_des,RR_foot_relative_des, RL_foot_relative_des;
 Eigen::Matrix<double,3,1> FR_foot_relative_des_old, FL_foot_relative_des_old,RR_foot_relative_des_old, RL_foot_relative_des_old;
 Eigen::Matrix<double,3,1> FR_foot_relative_mea, FL_foot_relative_mea,RR_foot_relative_mea, RL_foot_relative_mea;
@@ -142,19 +147,26 @@ double ratex,rate,rate_stand_up;
 Eigen::Matrix<double,3,1>  q_ini;
 
 
-int stand_count,stand_up_count;
+int stand_count,stand_up_count,dynamic_count;
+double nt_slow_mpc;
 
 /////////////////////////////////////////************* Force distribution **********************/////////////////////////////////////////
 ////// Force distribution 
-Eigen::Vector3d F_sum, g_sum;
+Eigen::Matrix<double,6,1> F_sum;
 Eigen::Matrix3d Momentum_sum;
+
+
+
+Eigen::Vector3d vec_foot_rl,vec_com_rfoot;
+double rlleg_dis, com_rleg_dis, rleg_com_raw, rleg_com_raw1;
 
 double rleg_com, lleg_com;
 Eigen::Matrix<double,6,1> F_lr_predict;
 bool FR_swing,FL_swing,RR_swing,RL_swing;
 
 int bjx1;
-Eigen::Matrix<double, 3,1>  FR_torque,FL_torque,RR_torque,RL_torque;
+int right_support;
+Eigen::Matrix<double, 3,1>  FR_torque_impedance,FL_torque_impedance,RR_torque_impedance,RL_torque_impedance;
 Eigen::Matrix<double, 12,1> Legs_torque;
 
 Eigen::Matrix<double, 3,1> FR_GRF, FL_GRF, RR_GRF, RL_GRF;
@@ -194,6 +206,7 @@ double rfoot_theta_des[3];
 double lfoot_theta_des[3];
 double theta_des[3];
 double theta_des_pre[3];	
+double theta_acc_des[3];
 double rfoot_pose_sensor[3];
 double lfoot_pose_sensor[3];
 double zmp_sensor[3];

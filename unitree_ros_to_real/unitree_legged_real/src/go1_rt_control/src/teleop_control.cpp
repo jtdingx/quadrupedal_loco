@@ -289,52 +289,52 @@ void keyboard_controller::keyboardLoop()
     //==============    跳舞指令 dancing position offest command    ======================
             case  KEYCODE_A:
                  
-              Dance_Yside +=  0.001;
+              Dance_Yside +=  0.0005;
               out_num = KEYCODE_A;
             break;
             case  KEYCODE_D:
-	       	    Dance_Yside +=  -0.001;
+	       	    Dance_Yside +=  -0.0005;
               out_num = KEYCODE_D;
             break;
             case  KEYCODE_W:
-	       	    Dance_Xside +=   0.001;
+	       	    Dance_Xside +=   0.0005;
               out_num = KEYCODE_W;
             break;
             case  KEYCODE_S:
-	       	    Dance_Xside +=  - 0.001;
+	       	    Dance_Xside +=  - 0.0005;
               out_num = KEYCODE_S;
             break;
             case  KEYCODE_Q:
-	       	    Dance_Zside += 0.001;
+	       	    Dance_Zside += 0.0005;
               out_num = KEYCODE_Q;
             break;
             case  KEYCODE_E:
-	       	    Dance_Zside +=  - 0.001;
+	       	    Dance_Zside +=  - 0.0005;
               out_num = KEYCODE_E;
             break;
             //===========   跳舞姿态角 dancing orientation command   ============
             case  KEYCODE_J:
-	       	    Dance_Roll +=  0.001;
+	       	    Dance_Roll +=  0.0005;
               out_num = KEYCODE_J;
             break;
             case  KEYCODE_L:
-	       	    Dance_Roll +=  -0.001;
+	       	    Dance_Roll +=  -0.0005;
               out_num = KEYCODE_L;
             break;
             case  KEYCODE_I:
-	       	    Dance_Pitch +=   0.001;
+	       	    Dance_Pitch +=   0.0005;
               out_num = KEYCODE_I;
             break;
             case  KEYCODE_K:
-	       	    Dance_Pitch +=  - 0.001;
+	       	    Dance_Pitch +=  - 0.0005;
               out_num = KEYCODE_K;
             break;
             case  KEYCODE_U:
-	       	    Dance_Yaw +=   0.001;
+	       	    Dance_Yaw +=   0.0005;
               out_num = KEYCODE_U;
             break;
             case  KEYCODE_O:
-	       	    Dance_Yaw +=  - 0.001;
+	       	    Dance_Yaw +=  - 0.0005;
               out_num = KEYCODE_O;
             break;
 
@@ -382,7 +382,7 @@ void keyboard_controller::keyboardLoop()
     Base_offset.linear.z  =   Dance_Zside;
     Base_offset.angular.x =   Dance_Roll;
     Base_offset.angular.y =   Dance_Pitch;
-    Base_offset.angular.z =   Push_num;
+    Base_offset.angular.z =   Dance_Yaw;
     pub2_.publish(Base_offset);
     
     }  
