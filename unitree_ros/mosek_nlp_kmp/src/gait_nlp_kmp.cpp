@@ -12,7 +12,7 @@
 #include "math.h"
 #include "NLPRTControl/NLPRTControlClass.h"
 #include "Robotpara/robot_const_para_config.h"
-
+#include <geometry_msgs/Twist.h>  
 
 using namespace Eigen;
 using namespace std;
@@ -60,6 +60,16 @@ void state_feed_sub_operation(const sensor_msgs::JointState::ConstPtr &msg)
 }
 
 
+void keyboard_subscribe_sub_operation(const geometry_msgs::Twist::ConstPtr &msg)
+{
+    printf("linear x: %f\n",msg->linear.x); 
+    printf("linear y: %f\n",msg->linear.y); 
+}
+
+
+
+
+
 
 int main(int argc, char *argv[])
 {
@@ -78,6 +88,7 @@ int main(int argc, char *argv[])
 
 
     ros::Subscriber state_feedback_subscribe_ = nh.subscribe<sensor_msgs::JointState>("/rt2nrt/state", 10,state_feed_sub_operation);
+    ros::Subscriber keyboard_subscribe_ = nh.subscribe<geometry_msgs::Twist>("/Robot_mode", 10,keyboard_subscribe_sub_operation);
     
     ros::Publisher mpc_gait_pub_ = nh.advertise<sensor_msgs::JointState>("/MPC/Gait", 10);
 

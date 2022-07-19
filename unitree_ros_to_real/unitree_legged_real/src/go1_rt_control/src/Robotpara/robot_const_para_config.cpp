@@ -8,9 +8,8 @@ namespace gait {
     const double  dt_mpc_slow = 0.025;   /////first layer MPC-time interval
     const double  dt_mpc_fast = 0.01; /////second layer MPC-time interval
 
-    const double  J_ini = 12 * 0.1*0.1;  /////inertial tensor
-
-    const double  RobotPara_Z_C = 0.309458;
+    
+    
     const double  RobotPara_G = 9.8; 
     const double  RobotPara_FOOT_LENGTH = 0.01; 
     const double  RobotPara_FOOT_WIDTH = 0.01;
@@ -26,9 +25,12 @@ namespace gait {
     
   
     // robot parameters
-    const double mass = 12;   //total mass      
+    const double mass = 12.5;   //total mass      
     const double force_z_limt = 50;
-    const double Z_c = 0.309458;
+    const double Z_c = 0.28;
+    const double  RobotPara_Z_C = 0.28;
+    const double  J_ini = mass * 0.1*0.1;  /////inertial tensor
+
     
 
     const double com_pos_max = 0.004;
@@ -48,7 +50,7 @@ namespace gait {
     const double _g = 9.8;
 
 //ros system constant
-    const double t_program_cyclic = 0.005;  //program running time period
+    const double t_program_cyclic = 0.001;  //program running time period
 
 //Robot model
     const int LegMotorNumber = 12;
@@ -60,9 +62,7 @@ namespace gait {
     double r[6] = {0, -0.1098, 0, 0, 0, 0};
     double w[6] = {0.0, 0.0, 0.565, 0, 0, 0};
 
-    //20181115：0.58的质心高度，可以走0.28的步长: zc = 0.48
-    //20181121:0.60的质心高度，可以走0.24: zc = 0.50;
-    //20181121:0.56的质心高度，可以走0.30； zc = 0.46
+
     //double stand_init_w[6] ={0, 0.0, 0.46, 0, 0, 0};
     double stand_init_w[6] ={0.0, 0.0, Z_c, 0, 0, 0};//0.509 ===>0.609
     //dynamic 0.512

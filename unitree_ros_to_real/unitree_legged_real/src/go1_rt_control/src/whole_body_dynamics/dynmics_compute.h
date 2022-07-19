@@ -21,7 +21,7 @@ Edited by Jiatao Ding, email: jtdingx@gmail.com
 #include <nav_msgs/Odometry.h>
 #include <Eigen/Dense>
 #include "QP/QPBaseClass.h"
-
+#include "Robotpara/robot_const_para_config.h"
 
 using namespace std;
 

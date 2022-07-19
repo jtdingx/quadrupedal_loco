@@ -21,13 +21,14 @@ Edited by Jiatao Ding, email: jtdingx@gmail.com
 #include "dynmics_compute.h"
 #include <Eigen/Dense>
 
+
 using namespace std;
 using namespace Eigen;
 
 
 Dynamiccclass::Dynamiccclass()	: QPBaseClass()
 {
-    mass = 12;
+    mass = gait::mass;
     initial_matrix = 0;
     joint_torque.setZero();
 
@@ -61,7 +62,7 @@ Dynamiccclass::Dynamiccclass()	: QPBaseClass()
     qp_beta = 1000;
     qp_gama = 10;
     fz_max = 160;
-    mu = 0.25;
+    mu = 0.5;
     x_offset = 0.000;    
 
     AA.setZero();

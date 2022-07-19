@@ -24,6 +24,7 @@ Edited by Jiatao Ding, email: jtdingx@gmail.com
 #include "kinematics/Kinematics.h"
 #include "sensor_msgs/JointState.h"
 #include "Robotpara/robot_const_para_config.h"
+#include <geometry_msgs/Twist.h>  
 
 using namespace std;
 using namespace unitree_model;
@@ -62,6 +63,8 @@ public:
         //// topic with first-layer MPC
         nrt_mpc_gait_subscribe_ = nm.subscribe("/MPC/Gait", 10, &multiThread::nrt_gait_sub_operation, this);
         gait_des_sub_ = nm.subscribe("/rtMPC/traj", 10,&multiThread::rt_gait_sub_operation, this);
+
+        robot_mode_sub_ = nm.subscribe("/Robot_mode", 10,&multiThread::robot_mode, this);
     }
 
     void imuCallback(const sensor_msgs::Imu & msg)
@@ -245,13 +248,18 @@ public:
 	
     }    
     
+    void robot_mode(const geometry_msgs::Twist::ConstPtr &msg)
+    {
+      printf("linear x: %f\n",msg->linear.x);
+	
+    }      
   
   
 
 
 private:
     ros::NodeHandle nm;
-    ros::Subscriber servo_sub[12], footForce_sub[4], imu_sub, nrt_mpc_gait_subscribe_, gait_des_sub_;
+    ros::Subscriber servo_sub[12], footForce_sub[4], imu_sub, nrt_mpc_gait_subscribe_, gait_des_sub_,robot_mode_sub_;
 
 
     string robot_name;
