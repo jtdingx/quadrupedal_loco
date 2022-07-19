@@ -102,8 +102,8 @@ class keyboard_controller
     keyboard_controller()  
     {  
         pub_ = n_.advertise<geometry_msgs::Twist>("teleopkey", 1);  
-        pub1_ = n_.advertise<geometry_msgs::Twist>("Robot_mode", 1); 
-        pub2_ = n_.advertise<geometry_msgs::Twist>("Base_offset", 1); 
+        pub1_ = n_.advertise<geometry_msgs::Twist>("/Robot_mode", 10); 
+        pub2_ = n_.advertise<geometry_msgs::Twist>("/Base_offset", 10); 
         pub3_ = n_.advertise<geometry_msgs::Twist>("cmd_to_joy", 1);
   //      sub1= n_.subscribe("Function_on", 10, FunctionReceived);
     }     
@@ -125,11 +125,18 @@ int main(int argc, char** argv)
 {  
     ros::init(argc,argv,"teleop");  
 
+    // ros::Rate loop_rate(1000);
+
     keyboard_controller teleop;  
+
+    // loop_rate.sleep();
 
     signal(SIGINT, quit);
 
     teleop.keyboardLoop(); 
+
+    
+
     ros::spin();  
         
     // Dance_Xside = 0;

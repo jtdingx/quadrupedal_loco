@@ -13,6 +13,8 @@ Use of this source code is governed by the MPL-2.0 license, see LICENSE.
 #include "sensor_msgs/JointState.h"
 #include <Eigen/Dense>
 #include "go1_const.h"
+#include "geometry_msgs/Twist.h"
+
 
 using namespace UNITREE_LEGGED_SDK;
 
@@ -40,6 +42,20 @@ double jointLinearInterpolation(double initPos, double targetPos, double rate, i
     dqDes[j] = 0.8*dqDes_old[j] + 0.2*(p - qDes[j])/(1.0/ctrl_estimation);
     dqDes_old[j] = dqDes[j];
     return p;
+}
+
+
+void keyboard_model_callback(const geometry_msgs::Twist::ConstPtr &msgIn) {
+    
+    if((msgIn->linear.x == 1))
+    {
+        printf("===========Switch to STAND_UP state==========");
+    }
+    if((msgIn->linear.x == 2))
+    {
+        printf("===========Switch to DYNAMIC WALKING state==========");
+    } 
+    printf("msgIn->linear.x: %f \n", msgIn->linear.x);  
 }
 
 
@@ -134,6 +150,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     roslcm.SubscribeState();
     gait_data_pub = n.advertise<sensor_msgs::JointState>("go1_gait_data",10);
     gait_data_pubx = n.advertise<sensor_msgs::JointState>("go1_gait_datax",10);       
+    ros::Subscriber robot_mode_cmd = n.subscribe("/Robot_mode", 1, keyboard_model_callback); //// for robot mode selectio
 
     pthread_t tid;
     pthread_create(&tid, NULL, update_loop<TLCM>, &roslcm);
@@ -146,7 +163,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     while (ros::ok()){
         roslcm.Get(RecvLowLCM);
         RecvLowROS = ToRos(RecvLowLCM);
-        printf("FR_2 position: %f\n",  RecvLowROS.motorState[FR_2].q);
+        // printf("FR_2 position: %f\n",  RecvLowROS.motorState[FR_2].q);
 
         // gravity compensation
         SendLowROS.motorCmd[FR_0].tau = -0.65f;

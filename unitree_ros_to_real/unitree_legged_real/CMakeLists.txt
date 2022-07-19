@@ -82,6 +82,10 @@ add_executable(go1_teleop_control ${SRC_PATH}/teleop_control.cpp)
 target_link_libraries(go1_teleop_control ${EXTRA_LIBS} ${catkin_LIBRARIES})
 add_dependencies(go1_teleop_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+# add_executable(go1_teleop_control ${SRC_PATH}/control_Keyboard.cpp)
+# target_link_libraries(go1_teleop_control ${EXTRA_LIBS} ${catkin_LIBRARIES})
+# add_dependencies(go1_teleop_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 ##########################for go1_servo generation######
 
 add_executable(go1_servo_control 

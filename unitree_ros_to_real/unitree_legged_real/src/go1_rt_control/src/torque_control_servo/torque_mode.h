@@ -20,7 +20,7 @@ Use of this source code is governed by the MPL-2.0 license, see LICENSE.
 #include "utils/Utils.h"
 
 #include "sensor_msgs/Imu.h"
-#include "geometry_msgs/Twist.h"
+
 
 #include "utils/filter.hpp"
 #include "go1_const.h"
@@ -141,6 +141,7 @@ Eigen::Matrix3d root_rot_mat_z;
 Eigen::Vector3d root_lin_vel;
 Eigen::Vector3d root_ang_vel;
 Eigen::Vector3d root_acc;
+double yaw_angle;
 
 
 double ratex,rate,rate_stand_up;

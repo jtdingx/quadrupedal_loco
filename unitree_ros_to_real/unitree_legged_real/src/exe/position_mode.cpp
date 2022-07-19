@@ -13,6 +13,7 @@ Use of this source code is governed by the MPL-2.0 license, see LICENSE.
 #include "convert.h"
 #include "go1_const.h"
 #include "sensor_msgs/JointState.h"
+#include "geometry_msgs/Twist.h"
 
 using namespace UNITREE_LEGGED_SDK;
 
@@ -34,6 +35,21 @@ double jointLinearInterpolation(double initPos, double targetPos, double rate)
     return p;
 }
 
+
+void keyboard_model_callback(const geometry_msgs::Twist::ConstPtr &msgIn) {
+    
+    if((msgIn->linear.x == 1))
+    {
+        printf("===========Switch to STAND_UP state==========");
+    }
+    if((msgIn->linear.x == 2))
+    {
+        printf("===========Switch to DYNAMIC WALKING state==========");
+    } 
+    printf("msgIn->linear.x: %f \n", msgIn->linear.x);  
+}
+
+
 template<typename TCmd, typename TState, typename TLCM>
 int mainHelper(int argc, char *argv[], TLCM &roslcm)
 {
@@ -43,7 +59,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     std::cin.ignore();
 
     ros::NodeHandle n;
-    ros::Rate loop_rate(500);
+    ros::Rate loop_rate(1000);
 
     ros::Publisher gait_data_pub; // for data_analysis
     ros::Publisher gait_data_pubx;  
@@ -77,6 +93,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     gait_data_pub = n.advertise<sensor_msgs::JointState>("go1_gait_data",10);
     gait_data_pubx = n.advertise<sensor_msgs::JointState>("go1_gait_datax",10);    
+    ros::Subscriber robot_mode_cmd = n.subscribe("/Robot_mode", 1, keyboard_model_callback); //// for robot mode selection
 
     pthread_t tid;
     pthread_create(&tid, NULL, update_loop<TLCM>, &roslcm);
@@ -94,7 +111,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     while (ros::ok()){
         roslcm.Get(RecvLowLCM);
         RecvLowROS = ToRos(RecvLowLCM);
-        printf("FR_2 position: %f\n",  RecvLowROS.motorState[FR_2].q);
+        // printf("FR_2 position: %f\n",  RecvLowROS.motorState[FR_2].q);
 
         if(initiated_flag == true){
             motiontime++;
@@ -213,9 +230,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         gait_data_pub.publish(joint2simulation);
         gait_data_pubx.publish(joint2simulationx);
 
-        /// send cmd to LCM///////////////////////////////////
-        SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
-        roslcm.Send(SendLowLCM);
+        // /// send cmd to LCM///////////////////////////////////
+        // SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
+        // roslcm.Send(SendLowLCM);
 
         ros::spinOnce();
         loop_rate.sleep();
