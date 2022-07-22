@@ -29,6 +29,7 @@ int ctrl_estimation = 1000;
 float Kp_joint[12] = {45,60,60,45,60,60,45,50,60,45,50,60};
 float Kd_joint[12] = {2,2.5,2.5,2,2.5,2.5,2,2.5,2.5,2,2.5,2.5};
 
+
 double base_offset_x = 0;
 double base_offset_y = 0; 
 double base_offset_z = 0;
@@ -110,10 +111,10 @@ double clamp_func(double new_cmd, double old_cmd, double thresh)
 
 }
 
-void fb_control()
-{
+// void fb_control()
+// {
 
-}
+// }
 
 
 template<typename TCmd, typename TState, typename TLCM>
@@ -179,6 +180,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     torque_err_intergration.setZero();
     Torque_ff_spring.setZero();
     Torque_ff_GRF.setZero();
+    Torque_ff_GRF_opt.setZero();
 
     ///////let impedance control
     swing_kp.setZero();
@@ -187,7 +189,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     swing_kp(0,0) = 30;    swing_kp(1,1) = 30;    swing_kp(2,2) = 30;
     swing_kd(0,0) = 0.5;     swing_kd(1,1) = 0.5;     swing_kd(2,2) = 0.5;
 
-    FF_enable = true; ///// Before setting True, make sure the spring is engaged!!!!!!!!!!!!
+    FF_enable = false; ///// Before setting True, make sure the spring is engaged!!!!!!!!!!!!
     
     /////////===== feedback PID joint controller===========
     torq_kp_hip= 8;  
@@ -218,6 +220,11 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     calf_kd_scale = 1;
 
 
+    for(int j=0; j<12; j++)
+    {
+        Kp_joint[j] *= 0.5;
+        Kd_joint[j] *= 0.5; 
+    }
     ////=========Gait mode generation=======///////////
     gait_mode = 102;   
     x_offset = 0.01;
@@ -365,6 +372,11 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     FL_GRF.setZero();
     RR_GRF.setZero();
     RL_GRF.setZero();
+    FR_GRF_opt.setZero();
+    FL_GRF_opt.setZero();
+    RR_GRF_opt.setZero();
+    RL_GRF_opt.setZero();
+
 
     FR_swing = true; 
     FL_swing = true;
@@ -1041,7 +1053,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
 
                         ///////// add GRF compensation=========///////
-                        F_sum(3) = gait::mass * gait::_g;
+                        F_sum(2) = gait::mass * gait::_g;
                         FR_GRF = FL_GRF = F_sum.block<3,1>(0,0) / 2.0 * (body_p_des[0] - (RR_foot_des[0] + RL_foot_des[0])/2)/((FR_foot_des[0] + FL_foot_des[0])/2 - (RR_foot_des[0] + RL_foot_des[0])/2);
                         RR_GRF = RL_GRF = F_sum.block<3,1>(0,0) / 2.0  - FR_GRF;
 
@@ -1050,7 +1062,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                         Torque_ff_GRF.block<3,1>(6,0) = - RR_Jaco.transpose() *  RR_GRF;
                         Torque_ff_GRF.block<3,1>(9,0) = - RL_Jaco.transpose() *  RL_GRF;                        
 
-
+                        
                         rate_stand_up = pow(stand_up_count/500.0,2); 
                         for(int j=0; j<12;j++)
                         {
@@ -1061,7 +1073,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                         FL_swing = false;
                         RR_swing = false;
                         RL_swing = false; 
-
+                        
+                        //// only for test
+                        Legs_torque = Torque_ff_GRF;
 
                         break;                        
                     case DYNAMIC:
@@ -1072,13 +1086,15 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                             printf("===PERFORMING DYNAMIC WALKING===\n");
                         }                        
                         ////////dyanmic walking test/////////////////////////
-                        body_p_des[0] = body_p_Homing_dynamic[0] + 0.0 * sin(2*M_PI*dynamic_count/1000.0);
-                        body_p_des[1] = body_p_Homing_dynamic[1] + 0.0 * sin(2*M_PI*dynamic_count/1000.0);
+                        body_p_des[0] = body_p_Homing_dynamic[0] + 0.02 * sin(2*M_PI*dynamic_count/1000.0);
+                        body_p_des[1] = body_p_Homing_dynamic[1] + 0.01 * sin(2*M_PI*dynamic_count/1000.0);
                         body_p_des[2] = body_p_Homing_dynamic[2] + 0.025 * sin(2*M_PI*dynamic_count/1000.0);
                         body_r_des[0] = body_r_Homing_dynamic[0] + 0.0 * sin(2*M_PI*dynamic_count/1000.0);
                         body_r_des[1] = body_r_Homing_dynamic[1] + 0.0 * sin(2*M_PI*dynamic_count/1000.0);
                         body_r_des[2] = body_r_Homing_dynamic[2] + 0.0 * sin(2*M_PI*dynamic_count/1000.0); 
                         
+                        coma_des[0] = -0.02 * pow(2*M_PI/1000.0,2) * sin(2*M_PI*dynamic_count/1000.0);
+                        coma_des[0] = -0.01 * pow(2*M_PI/1000.0,2) * sin(2*M_PI*dynamic_count/1000.0);
                         coma_des[2] = -0.025 * pow(2*M_PI/1000.0,2) * sin(2*M_PI*dynamic_count/1000.0);
                         
                         ////// body pose feedback
@@ -1198,160 +1214,174 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                         qDes[11] = RL_angle_des(2,0); 
 
                         
-                        ///////// add GRF compensation=========///////
-                        F_sum(3) = gait::mass * (gait::_g + coma_des[2]);
-                        FR_GRF = FL_GRF = F_sum.block<3,1>(0,0) / 2.0 * (body_p_des[0] - (RR_foot_des[0] + RL_foot_des[0])/2)/((FR_foot_des[0] + FL_foot_des[0])/2 - (RR_foot_des[0] + RL_foot_des[0])/2);
-                        RR_GRF = RL_GRF = F_sum.block<3,1>(0,0) / 2.0  - FR_GRF;
+                        // ///////// add GRF compensation=========///////
+                        // F_sum(2) = gait::mass * (gait::_g + coma_des[2]);
+                        // FR_GRF = FL_GRF = F_sum.block<3,1>(0,0) / 2.0 * (body_p_des[0] - (RR_foot_des[0] + RL_foot_des[0])/2)/((FR_foot_des[0] + FL_foot_des[0])/2 - (RR_foot_des[0] + RL_foot_des[0])/2);
+                        // RR_GRF = RL_GRF = F_sum.block<3,1>(0,0) / 2.0  - FR_GRF;
 
-                        Torque_ff_GRF.block<3,1>(0,0) = - FR_Jaco.transpose() *  FR_GRF;
-                        Torque_ff_GRF.block<3,1>(3,0) = - FL_Jaco.transpose() *  FL_GRF;
-                        Torque_ff_GRF.block<3,1>(6,0) = - RR_Jaco.transpose() *  RR_GRF;
-                        Torque_ff_GRF.block<3,1>(9,0) = - RL_Jaco.transpose() *  RL_GRF;                        
+                        // Torque_ff_GRF.block<3,1>(0,0) = - FR_Jaco.transpose() *  FR_GRF;
+                        // Torque_ff_GRF.block<3,1>(3,0) = - FL_Jaco.transpose() *  FL_GRF;
+                        // Torque_ff_GRF.block<3,1>(6,0) = - RR_Jaco.transpose() *  RR_GRF;
+                        // Torque_ff_GRF.block<3,1>(9,0) = - RL_Jaco.transpose() *  RL_GRF;                        
 
-                        FR_swing = false; 
-                        FL_swing = false;
-                        RR_swing = false;
-                        RL_swing = false;                         
+                        // FR_swing = false; 
+                        // FL_swing = false;
+                        // RR_swing = false;
+                        // RL_swing = false;                         
 
-                        //////// QP-based force distribution //////////////////
+                        // ///////////////===========================================///////////////////////////
+                        // //////=================== QP-based force distribution ================//////////////////
                         // nt_slow_mpc = (( dynamic_count % n_t_int )* dtx) / (gait::dt_mpc_slow);
 
-                        // F_sum(0) = gait::mass * coma_des[0];
-                        // F_sum(1) = gait::mass * coma_des[1];
-                        // F_sum(2) = gait::mass * gait::_g + gait::mass * coma_des[2];
+                        F_sum(0) = gait::mass * coma_des[0];
+                        F_sum(1) = gait::mass * coma_des[1];
+                        F_sum(2) = gait::mass * (gait::_g + coma_des[2]);
                         
-                        // ///////==== momentum check !!!!!!!!!!!!!!!!!!!!!!!! =================
-                        // F_sum(3,0) = Momentum_sum(0,0) * theta_acc_des[0] + Momentum_sum(0,1) * theta_acc_des[1] + Momentum_sum(0,2) * theta_acc_des[2];
-                        // F_sum(4,0) = Momentum_sum(1,0) * theta_acc_des[0] + Momentum_sum(1,1) * theta_acc_des[1] + Momentum_sum(1,2) * theta_acc_des[2];
-                        // F_sum(5,0) = Momentum_sum(2,0) * theta_acc_des[0] + Momentum_sum(2,1) * theta_acc_des[1] + Momentum_sum(2,2) * theta_acc_des[2];
+                        ///////==== momentum check !!!!!!!!!!!!!!!!!!!!!!!! =================
+                        F_sum(3,0) = Momentum_sum(0,0) * theta_acc_des[0] + Momentum_sum(0,1) * theta_acc_des[1] + Momentum_sum(0,2) * theta_acc_des[2];
+                        F_sum(4,0) = Momentum_sum(1,0) * theta_acc_des[0] + Momentum_sum(1,1) * theta_acc_des[1] + Momentum_sum(1,2) * theta_acc_des[2];
+                        F_sum(5,0) = Momentum_sum(2,0) * theta_acc_des[0] + Momentum_sum(2,1) * theta_acc_des[1] + Momentum_sum(2,2) * theta_acc_des[2];
+                        
+                        vec_foot_rl << lfoot_des[0] - rfoot_des[0],
+                                    lfoot_des[1] - rfoot_des[1],
+                                    lfoot_des[2] - rfoot_des[2];
 
-                        // vec_foot_rl << lfoot_des[0] - rfoot_des[0],
-                        //             lfoot_des[1] - rfoot_des[1],
-                        //             lfoot_des[2] - rfoot_des[2];
+                        vec_com_rfoot << com_des[0] - rfoot_des[0],
+                                    com_des[1] - rfoot_des[1],
+                                    com_des[2] - rfoot_des[2];                          
 
-                        // vec_com_rfoot << com_des[0] - rfoot_des[0],
-                        //             com_des[1] - rfoot_des[1],
-                        //             com_des[2] - rfoot_des[2];                          
+                        rlleg_dis = sqrt(pow(vec_foot_rl[0], 2) + pow(vec_foot_rl[1], 2) + pow(vec_foot_rl[2], 2));
+                        com_rleg_dis = vec_foot_rl[0]*vec_com_rfoot[0] + vec_foot_rl[1]*vec_com_rfoot[1] + vec_foot_rl[2]*vec_com_rfoot[2];
+                        rleg_com_raw = com_rleg_dis /pow(rlleg_dis,2);
+                        rleg_com_raw1 = std::min(rleg_com_raw,1.0);
+                        rleg_com = std::max(rleg_com_raw1,0.0);
 
-                        // rlleg_dis = sqrt(pow(vec_foot_rl[0], 2) + pow(vec_foot_rl[1], 2) + pow(vec_foot_rl[2], 2));
-                        // com_rleg_dis = vec_foot_rl[0]*vec_com_rfoot[0] + vec_foot_rl[1]*vec_com_rfoot[1] + vec_foot_rl[2]*vec_com_rfoot[2];
-                        // rleg_com_raw = com_rleg_dis /rlleg_dis;
-                        // rleg_com_raw1 = std::min(rleg_com_raw,1.0);
-                        // rleg_com = std::max(rleg_com_raw1,0.0);
-
-                        // lleg_com = 1 - rleg_com;  
-
-                        // if(right_support == 0) ////left support
+                        lleg_com = 1 - rleg_com;
+                        // if(dynamic_count / 50 ==0)
                         // {
-                        //     F_lr_predict(0) = F_sum(0);
-                        //     F_lr_predict(1) = F_sum(1);
-                        //     F_lr_predict(2) = F_sum(2);
-                        //     F_lr_predict(3) = 0;
-                        //     F_lr_predict(4) = 0;
-                        //     F_lr_predict(5) = 0;
-                        //     switch (gait_mode)
-                        //         {
-                        //         case 101:  ////biped walking
-                        //             FR_swing = true;
-                        //             RR_swing = true;
-                        //             FL_swing = false;
-                        //             RL_swing = false;
-                        //             break;
-                        //         case 102:  ///troting
-                        //             FR_swing = false;
-                        //             RL_swing = false;
-                        //             FL_swing = true;
-                        //             RR_swing = true;
-
-                        //             break;
-                        //         case 103:  ///gallop: alter the  x-y direction
-                        //             FR_swing = true;
-                        //             FL_swing = true;
-                        //             RR_swing = false;
-                        //             RL_swing = false;                    
-
-                        //             break;            
-                        //         default:
-                        //             break;
-                        //         } 
+                        //     printf("lleg_com: %f \n",lleg_com);  
                         // }
-                        // else
-                        // {
-                        //     if (right_support == 1)
-                        //     {
-                        //         F_lr_predict(0) = 0;
-                        //         F_lr_predict(1) = 0;
-                        //         F_lr_predict(2) = 0;
-                        //         F_lr_predict(3) = F_sum(0);
-                        //         F_lr_predict(4) = F_sum(1);
-                        //         F_lr_predict(5) = F_sum(2);
-                        //         switch (gait_mode)
-                        //             {
-                        //             case 101:  ////biped walking
-                        //                 FR_swing = false;
-                        //                 RR_swing = false;
-                        //                 FL_swing = true;
-                        //                 RL_swing = true;
-                        //                 break;
-                        //             case 102:  ///troting
-                        //                 FR_swing = true;
-                        //                 RL_swing = true;
-                        //                 FL_swing = false;
-                        //                 RR_swing = false;                            
+                        
 
-                        //                 break;
-                        //             case 103:  ///gallop: alter the  x-y direction
-                        //                 FR_swing = false;
-                        //                 FL_swing = false;
-                        //                 RR_swing = true;
-                        //                 RL_swing = true;                    
+                        if(right_support == 0) ////left support
+                        {
+                            F_lr_predict(0) = F_sum(0);
+                            F_lr_predict(1) = F_sum(1);
+                            F_lr_predict(2) = F_sum(2);
+                            F_lr_predict(3) = 0;
+                            F_lr_predict(4) = 0;
+                            F_lr_predict(5) = 0;
+                            switch (gait_mode)
+                                {
+                                case 101:  ////biped walking
+                                    FR_swing = true;
+                                    RR_swing = true;
+                                    FL_swing = false;
+                                    RL_swing = false;
+                                    break;
+                                case 102:  ///troting
+                                    FR_swing = false;
+                                    RL_swing = false;
+                                    FL_swing = true;
+                                    RR_swing = true;
 
-                        //                 break;            
-                        //             default:
-                        //                 break;
-                        //             }
-                        //     }
-                        //     else
-                        //     {
-                        //         F_lr_predict(0) = F_sum(0) * rleg_com;
-                        //         F_lr_predict(3) = F_sum(0) - F_lr_predict(0);
-                        //         F_lr_predict(1) = F_sum(1) * rleg_com;
-                        //         F_lr_predict(4) = F_sum(1) - F_lr_predict(1);
-                        //         F_lr_predict(2) = F_sum(2) * rleg_com;
-                        //         F_lr_predict(5) = F_sum(2) - F_lr_predict(2);
+                                    break;
+                                case 103:  ///gallop: alter the  x-y direction
+                                    FR_swing = true;
+                                    FL_swing = true;
+                                    RR_swing = false;
+                                    RL_swing = false;                    
 
-                        //         FR_swing = false;
-                        //         FL_swing = false;
-                        //         RR_swing = false;
-                        //         RL_swing = false;  
-                        //     }                
+                                    break;            
+                                default:
+                                    break;
+                                } 
+                        }
+                        else
+                        {
+                            if (right_support == 1)
+                            {
+                                F_lr_predict(0) = 0;
+                                F_lr_predict(1) = 0;
+                                F_lr_predict(2) = 0;
+                                F_lr_predict(3) = F_sum(0);
+                                F_lr_predict(4) = F_sum(1);
+                                F_lr_predict(5) = F_sum(2);
+                                switch (gait_mode)
+                                    {
+                                    case 101:  ////biped walking
+                                        FR_swing = false;
+                                        RR_swing = false;
+                                        FL_swing = true;
+                                        RL_swing = true;
+                                        break;
+                                    case 102:  ///troting
+                                        FR_swing = true;
+                                        RL_swing = true;
+                                        FL_swing = false;
+                                        RR_swing = false;                            
+
+                                        break;
+                                    case 103:  ///gallop: alter the  x-y direction
+                                        FR_swing = false;
+                                        FL_swing = false;
+                                        RR_swing = true;
+                                        RL_swing = true;                    
+
+                                        break;            
+                                    default:
+                                        break;
+                                    }
+                            }
+                            else
+                            {
+                                F_lr_predict(0) = F_sum(0) * rleg_com;
+                                F_lr_predict(3) = F_sum(0) - F_lr_predict(0);
+                                F_lr_predict(1) = F_sum(1) * rleg_com;
+                                F_lr_predict(4) = F_sum(1) - F_lr_predict(1);
+                                F_lr_predict(2) = F_sum(2) * rleg_com;
+                                F_lr_predict(5) = F_sum(2) - F_lr_predict(2);
+
+                                FR_swing = false;
+                                FL_swing = false;
+                                RR_swing = false;
+                                RL_swing = false;  
+                            }                
                             
-                        // }  
+                        }  
 
 
-                        // ////force:  left-right-leg   
-                        // for(int j=0; j<6; j++)
-                        // {
-                        //     //Force_L_R(j)= slow_mpc_gait(15+j) + nt_slow_mpc * (F_lr_predict(j) - slow_mpc_gait(15+j));  //continuous force profile
-                        //     //Force_L_R(j)= slow_mpc_gait(15+j);  //discontinuous force profile
-                        //     Force_L_R(j) = F_lr_predict(j);
-                        // }     
+                        ////force:  left-right-leg   
+                        for(int j=0; j<6; j++)
+                        {
+                            Force_L_R(j) = F_lr_predict(j);
+                        }     
 
-                        // leg_position.block<3,1>(0,0) = FR_foot_des;
-                        // leg_position.block<3,1>(3,0) = FL_foot_des; 
-                        // leg_position.block<3,1>(6,0) = RR_foot_des;
-                        // leg_position.block<3,1>(9,0) = RL_foot_des; 
-                        // Dynam.force_distribution(body_p_des,leg_position, Force_L_R, gait_mode, y_offset,rfoot_des,lfoot_des);
+                        leg_position.block<3,1>(0,0) = FR_foot_des;
+                        leg_position.block<3,1>(3,0) = FL_foot_des; 
+                        leg_position.block<3,1>(6,0) = RR_foot_des;
+                        leg_position.block<3,1>(9,0) = RL_foot_des; 
+                        Dynam.force_distribution(body_p_des,leg_position, Force_L_R, gait_mode, y_offset,rfoot_des,lfoot_des);
 
-                        // // cout<<"right_support:"<<right_support<<endl;
-                        // Dynam.force_opt(body_p_des,FR_foot_des, FL_foot_des, RR_foot_des, RL_foot_des,
-                        //                 F_sum, gait_mode, right_support, y_offset);
+                        // cout<<"right_support:"<<right_support<<endl;
+                        Dynam.force_opt(body_p_des,FR_foot_des, FL_foot_des, RR_foot_des, RL_foot_des,
+                                        F_sum, gait_mode, right_support, y_offset);
            
-                        // Torque_ff_GRF.block<3,1>(0,0) = - FR_Jaco.transpose() *  Dynam.F_leg_ref.col(0);
-                        // Torque_ff_GRF.block<3,1>(3,0) = - FL_Jaco.transpose() *  Dynam.F_leg_ref.col(1);
-                        // Torque_ff_GRF.block<3,1>(6,0) = - RR_Jaco.transpose() *  Dynam.F_leg_ref.col(2);
-                        // Torque_ff_GRF.block<3,1>(9,0) = - RL_Jaco.transpose() *  Dynam.F_leg_ref.col(3);  
+                        rate_stand_up = pow(dynamic_count/500.0,2); 
+                        if(rate_stand_up>=1)
+                        {
+                            rate_stand_up = 1;
+                        }
 
+                        FR_GRF_opt = (rate_stand_up * (Dynam.grf_opt.block<3,1>(0,0) - FR_GRF)) + FR_GRF;
+                        FL_GRF_opt = (rate_stand_up * (Dynam.grf_opt.block<3,1>(3,0) - FL_GRF)) + FL_GRF;
+                        RR_GRF_opt = (rate_stand_up * (Dynam.grf_opt.block<3,1>(6,0) - RR_GRF)) + RR_GRF;
+                        RL_GRF_opt = (rate_stand_up * (Dynam.grf_opt.block<3,1>(9,0) - RL_GRF)) + RL_GRF;
+
+                        Torque_ff_GRF.block<3,1>(0,0) = - FR_Jaco.transpose() *  FR_GRF_opt;
+                        Torque_ff_GRF.block<3,1>(3,0) = - FL_Jaco.transpose() *  FL_GRF_opt;
+                        Torque_ff_GRF.block<3,1>(6,0) = - RR_Jaco.transpose() *  RR_GRF_opt;
+                        Torque_ff_GRF.block<3,1>(9,0) = - RL_Jaco.transpose() *  RL_GRF_opt;
                         break;
                     default:
                          break;
@@ -1805,7 +1835,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                 //     SendLowROS.motorCmd[j].dq = VelStopF;
                 //     SendLowROS.motorCmd[j].Kp = 0;
                 //     SendLowROS.motorCmd[j].Kd = 0;
-                //     SendLowROS.motorCmd[j].tau = torque(j,0); ///for length generation
+                //     SendLowROS.motorCmd[j].tau = torque(j,0);
                 //    // SendLowROS.motorCmd[j].tau = 0;     ///for rest length measurement  
                  
                  ////// joint-level + toruqe
@@ -1813,7 +1843,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                     SendLowROS.motorCmd[j].dq = 0;
                     SendLowROS.motorCmd[j].Kp = Kp_joint[j];
                     SendLowROS.motorCmd[j].Kd = Kd_joint[j];
-                    SendLowROS.motorCmd[j].tau = torque(j,0); ///for length generation
+                    SendLowROS.motorCmd[j].tau = torque(j,0); 
                                   
                 }
 
@@ -1965,10 +1995,22 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         }
         
         ////// optimal grf compensation/////////
-        for(int j=0; j<12; j++)
+        for(int j=0; j<3; j++)
         {
-            joint2simulationx.position[12+j] = Dynam.grf_opt(j,0);
+            joint2simulationx.position[12+j] = FR_GRF_opt[j];
         }
+        for(int j=0; j<3; j++)
+        {
+            joint2simulationx.position[15+j] = FL_GRF_opt[j];
+        }
+        for(int j=0; j<3; j++)
+        {
+            joint2simulationx.position[18+j] = RR_GRF_opt[j];
+        }
+        for(int j=0; j<3; j++)
+        {
+            joint2simulationx.position[21+j] = RL_GRF_opt[j];
+        }                 
 
         /////// spring torque compensation//////
         for(int j=0; j<12; j++)

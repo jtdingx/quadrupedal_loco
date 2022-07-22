@@ -76,7 +76,7 @@ double torq_kp_thigh, torq_kd_thigh, torq_ki_thigh;
 double torq_kp_hip, torq_kd_hip, torq_ki_hip;
 Eigen::Matrix<double, torque_err_row,12> torque_err;
 Eigen::Matrix<double, 12,1>  torque_err_intergration;
-Eigen::Matrix<double, 12,1> Torque_ff_spring,Torque_ff_GRF; 
+Eigen::Matrix<double, 12,1> Torque_ff_spring,Torque_ff_GRF,Torque_ff_GRF_opt; 
 
 /////// spring constant here
 bool FF_enable;
@@ -172,7 +172,7 @@ Eigen::Matrix<double, 3,1>  FR_torque_impedance,FL_torque_impedance,RR_torque_im
 Eigen::Matrix<double, 12,1> Legs_torque;
 
 Eigen::Matrix<double, 3,1> FR_GRF, FL_GRF, RR_GRF, RL_GRF;
-
+Eigen::Matrix<double, 3,1> FR_GRF_opt, FL_GRF_opt, RR_GRF_opt, RL_GRF_opt;
 
 
 
