@@ -108,6 +108,7 @@ Dynamiccclass Dynam;
 
 /////////////*******************8 robot state ******************************************///////////////////////
 Eigen::Matrix<double,3,1> body_p_Homing, body_p_Homing_Retarget,body_p_Homing_dynamic, body_p_des, body_r_des,body_r_homing,body_r_Homing_dynamic;
+
 Eigen::Matrix<double,3,1> FR_foot_des, FL_foot_des,RR_foot_des, RL_foot_des;
 Eigen::Matrix<double,3,1> FR_foot_Homing, FL_foot_Homing,RR_foot_Homing, RL_foot_Homing;
 Eigen::Matrix<double,3,1> body_p_est, body_r_est;
@@ -216,25 +217,31 @@ Eigen::Matrix<double,23,1> comav_butterworth;
 Eigen::Vector2d theta_default;
 double comv_sensor[3];
 double coma_sensor[3];
+double w_pos_m[3];
+double w_rpy_m[3];
 
 Eigen::Vector3d L_com;
 Eigen::Vector3d com_estkine;
 Eigen::Vector3d cop_estkine;
 Eigen::Vector3d theta_estkine;
+Eigen::Vector3d theta_estkine_pre;
+Eigen::Vector3d thetav_estkine;
 Eigen::Vector3d thetaa_estkine;
 double Fr_estkine;
 double Fl_estkine;
 Eigen::Vector3d comv_estkine;
 Eigen::Matrix<double, 15,1> dob_result;
 double J_ini_xx_est,J_ini_yy_est;
-Eigen::Vector3d thetav_estkine;
 
 
 
-int count_in_mpc_max;
+
 
 ////===============================================================/////////////////
 /////////////////// for fast_mpc: body inclination optimization //////////////
+
+
+int count_in_mpc_max;
 
 sensor_msgs::JointState joint2simulationx;
 sensor_msgs::JointState state_to_MPC; /// 1 flag + 18state+3right_leg+3left_foot;

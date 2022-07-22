@@ -25,7 +25,7 @@ namespace gait {
     
   
     // robot parameters
-    const double mass = 12.5;   //total mass      
+    const double mass = 14;   //total mass      
     const double force_z_limt = 50;
     const double Z_c = 0.28;
     const double  RobotPara_Z_C = 0.28;
@@ -33,10 +33,10 @@ namespace gait {
 
     
 
-    const double com_pos_max = 0.004;
-    const double com_pos_min = -0.004;
-    const double com_rpy_max = -0.0025;
-    const double com_rpy_min = -0.0025;    
+    const double com_pos_max = 0.01;
+    const double com_pos_min = -0.01;
+    const double com_rpy_max = -0.01;
+    const double com_rpy_min = -0.01;    
   
   
 //math constant;
