@@ -129,6 +129,15 @@ class Quadruped{
 
         return SendLowROS;
     }
+
+    float stand_up(int rate_count){
+        rate = pow(rate_count/400.0,2); 
+        for(int j=0; j<12;j++)
+        {
+            qDes[j] = jointLinearInterpolation(qInit[j], homing_pose_q[j], rate, 0);
+        }
+        return qDes;
+    }
 };
 
 
@@ -165,6 +174,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
               << "Press Enter to continue..." << std::endl;
     std::cin.ignore();
 
+    VERBOSE = true;
 
     int ctrl_estimation = 1000;
 
@@ -187,27 +197,16 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     sensor_msgs::JointState joint2simulation, joint2simulationx;
 
-
-    bool initiated_flag = false;  // initiate need time
-
-
-    //////// for trajectory generation  ======================
+    // ------------------ Initialise some parameters ----------------------
     int count = 0;   
-
     int rate_count = 0;
-    float qInit[12]= {0};
-    float qDes[12] = {0};
-
-    float homing_pose_q[12] = {0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2};
-
-
-    ///////// leg controll ==============================//////////////////
-    
+    float qInit[12]= {0}; // Initial angle
+    float qDes[12] = {0}; // Current desired angle
+    // Desired homing pose
+    float homing_pose_q[12] = {0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2};    
 
     //===desired joint angles
     FR_angle_des.setZero(); FL_angle_des.setZero(); RR_angle_des.setZero(); RL_angle_des.setZero(); 
-
-
 
 
     roslcm.SubscribeState();
@@ -223,7 +222,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     }
 
 
-
+//------------------ MAIN LOOP -------------------------
     while (ros::ok()){
         roslcm.Get(RecvLowLCM);
         RecvLowROS = ToRos(RecvLowLCM);
@@ -239,39 +238,44 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                 qDes[j] = qInit[j];
             }
         }
-        //// move to the homing pose
+        // Move to homing pose
         if( motiontime >= 10 && motiontime <=  400){
             // printf("%f %f %f\n", );
             rate_count++;
-            rate = pow(rate_count/400.0,2); 
-            for(int j=0; j<12;j++)
-            {
-                qDes[j] = jointLinearInterpolation(qInit[j], homing_pose_q[j], rate, 0);
-            }
+            qDes = robot.stand_up(rate_count);
         }
-
+        // After 1000 steps, switch to on_ground PID gains (make sure the robot is on the ground)
         if (motiontime > 1000){
             bool on_ground = true;
             robot.PIDgains(on_ground);
         }
 
+
+        // Jumping:
+        if( motiontime >= 2000 && motiontime <=  3000){
+            robot.jumping_control(motiontime);
+        }
         // map the commands to the ROS message:
         SendLowROS = robot.publishCommand(SendLowROS,qDes);
         SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
         roslcm.Send(SendLowLCM);
+
+        if (VERBOSE){
         std::cout << "---------------------------------------" << std::endl;
         std::cout << "Force(1) is: " << RecvLowROS.footForce[0] << std::endl;
         std::cout << "Force(2) is: " << RecvLowROS.footForce[1] << std::endl;
         std::cout << "Force(3) is: " << RecvLowROS.footForce[2] << std::endl;
         std::cout << "Force(4) is: " << RecvLowROS.footForce[3] << std::endl;
 
-
         std::cout << "Error FL: " << robot.FL_angle_mea(0,0) - qDes[3] << std::endl;
         std::cout << robot.FL_angle_mea(1,0) - qDes[4] << std::endl;
         std::cout << robot.FL_angle_mea(2,0) - qDes[5] << std::endl;
 
         std::cout << "Gain for FR[0] is: " << robot.Kp_joint[0] << std::endl;
+        }
 
+
+        
         ros::spinOnce();
         loop_rate.sleep();
     };
