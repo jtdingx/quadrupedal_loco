@@ -8,10 +8,9 @@
 #include "sensor_msgs/JointState.h"
 #include <Eigen/Dense>
 #include "go1_const.h"
-#include "torque_mode.h"
 #include "Robotpara/robot_const_para_config.h"
 #include "geometry_msgs/Twist.h"
-
+#include "jumping_controller.h"
 //###############################
 
 
@@ -23,11 +22,13 @@ class Quadruped{
     // Body position and orientation:
     Eigen::Vector3d base_pos;
     Eigen::Vector3d base_rpy; // LATER CORRECT FOR DRIFT
-    float[12] Kp_joint;
-    float[12] Kd_joint;
+
+    float Kp_joint[12];
+    float Kd_joint[12];
 
     Quadruped(){
-        PIDgains();
+        bool on_ground = false;
+        PIDgains(on_ground);
         zeroStates();
     }
 
@@ -49,7 +50,7 @@ class Quadruped{
     };
 
     void updateStates(unitree_legged_msgs::LowState RecvLowROS){
-        """This function assigns the received robot states to the respective variables."""
+        //"""This function assigns the received robot states to the respective variables."""
         FR_angle_mea(0,0) = RecvLowROS.motorState[0].q;
         FR_angle_mea(1,0) = RecvLowROS.motorState[1].q;
         FR_angle_mea(2,0) = RecvLowROS.motorState[2].q;
@@ -77,22 +78,41 @@ class Quadruped{
         RL_dq_mea(2,0) = RecvLowROS.motorState[11].dq;
 
 
-        base_rpy = Eigen::Vector3d(RecvLowROS.imu.rpy[0],
-                                RecvLowROS.imu.rpy[1],
-                                RecvLowROS.imu.rpy[2]); 
+        Eigen::Quaterniond root_quat = Eigen::Quaterniond(RecvLowROS.imu.quaternion[0],
+                                       RecvLowROS.imu.quaternion[1],
+                                       RecvLowROS.imu.quaternion[2],
+                                       RecvLowROS.imu.quaternion[3]); 
+
+        base_rpy = Utils::quat_to_euler(root_quat);
     };
 
-    void PIDgains(){
-
-        for(int j=0; j<12; j++)
+    void PIDgains(bool on_ground=false){
+        double Kp[3];
+        if (on_ground){
+            Kp[0] = 20.0;
+            Kp[1] = 30.0;
+            Kp[2] = 50.0;
+        }
+        else{
+            Kp[0] = 10.0;
+            Kp[1] = 10.0;
+            Kp[2] = 12.0;
+        }
+        
+        for(int j=0; j<4; j++)
         {
-            Kp_joint[j] = 5.0;
-            Kd_joint[j] = 1.0; 
+            Kp_joint[j*3] = Kp[0];
+            Kp_joint[j*3+1] = Kp[1];
+            Kp_joint[j*3+2] = Kp[2];
+
+            Kd_joint[j*3] = 1.0; 
+            Kd_joint[j*3+1] = 1.0; 
+            Kd_joint[j*3+2] = 1.0; 
         }
 
     }
 
-    void publishCommand(unitree_legged_msgs::LowCmd SendLowROS,float qDes){
+    unitree_legged_msgs::LowCmd publishCommand(unitree_legged_msgs::LowCmd SendLowROS,float qDes[12]){
         for(int j=0; j<12;j++)
         {   
             ////// joint-level + toruqe
@@ -102,12 +122,12 @@ class Quadruped{
             SendLowROS.motorCmd[j].Kd = Kd_joint[j];
             SendLowROS.motorCmd[j].tau = 0;                 
         }
-        cmd.motorCmd[FR_0].tau = -0.65f;
-        cmd.motorCmd[FL_0].tau = +0.65f;
-        cmd.motorCmd[RR_0].tau = -0.65f;
-        cmd.motorCmd[RL_0].tau = +0.65f;
+        SendLowROS.motorCmd[FR_0].tau = -0.65f;
+        SendLowROS.motorCmd[FL_0].tau = +0.65f;
+        SendLowROS.motorCmd[RR_0].tau = -0.65f;
+        SendLowROS.motorCmd[RL_0].tau = +0.65f;
 
-        return SendLowROS
+        return SendLowROS;
     }
 };
 
@@ -145,16 +165,20 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
               << "Press Enter to continue..." << std::endl;
     std::cin.ignore();
 
+
+    int ctrl_estimation = 1000;
+
     ros::NodeHandle n;
     ros::Rate loop_rate(ctrl_estimation);
 
     ros::Publisher gait_data_pub; // for data_analysis
     ros::Publisher gait_data_pubx;  
 
+    float pi=3.1415926;
 
     long motiontime=0;
 
-    robot = Quadruped()
+    Quadruped robot = Quadruped();
 
     TCmd SendLowLCM = {0};
     TState RecvLowLCM = {0};
@@ -162,8 +186,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     unitree_legged_msgs::LowState RecvLowROS;
 
     sensor_msgs::JointState joint2simulation, joint2simulationx;
-    joint2simulation.position.resize(100);
-    joint2simulationx.position.resize(100);    
+
 
     bool initiated_flag = false;  // initiate need time
 
@@ -172,15 +195,11 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     int count = 0;   
 
     int rate_count = 0;
-    float qInit[12]={0};
+    float qInit[12]= {0};
     float qDes[12] = {0};
 
-    float sin_mid_q[12] = {0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2};
-    double sin_joint[12] = {0};
+    float homing_pose_q[12] = {0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2};
 
-    stand_count = 0;
-    stand_up_count = 0;
-    dynamic_count = 0;
 
     ///////// leg controll ==============================//////////////////
     
@@ -188,11 +207,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     //===desired joint angles
     FR_angle_des.setZero(); FL_angle_des.setZero(); RR_angle_des.setZero(); RL_angle_des.setZero(); 
 
-    angle_des.setZero();
 
-
-    n_count = 0;
-    stand_duration = 2; /// stand up: 2s
 
 
     roslcm.SubscribeState();
@@ -212,10 +227,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     while (ros::ok()){
         roslcm.Get(RecvLowLCM);
         RecvLowROS = ToRos(RecvLowLCM);
-        robot.updateStates();
-        
-        Eigen::Vector3d root_euler = Utils::quat_to_euler(robot.root_quat);
 
+        robot.updateStates(RecvLowROS);
+        
         motiontime++;
         // Record initial position
         if( motiontime >= 0 && motiontime < 10){
@@ -229,16 +243,34 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         if( motiontime >= 10 && motiontime <=  400){
             // printf("%f %f %f\n", );
             rate_count++;
-            rate = rate_count/200.0;//pow(rate_count/400.0,2); 
+            rate = pow(rate_count/400.0,2); 
             for(int j=0; j<12;j++)
             {
-                qDes[j] = jointLinearInterpolation(qInit[j], sin_mid_q[j], rate, 0);
+                qDes[j] = jointLinearInterpolation(qInit[j], homing_pose_q[j], rate, 0);
             }
         }
 
+        if (motiontime > 1000){
+            bool on_ground = true;
+            robot.PIDgains(on_ground);
+        }
+
+        // map the commands to the ROS message:
         SendLowROS = robot.publishCommand(SendLowROS,qDes);
         SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
         roslcm.Send(SendLowLCM);
+        std::cout << "---------------------------------------" << std::endl;
+        std::cout << "Force(1) is: " << RecvLowROS.footForce[0] << std::endl;
+        std::cout << "Force(2) is: " << RecvLowROS.footForce[1] << std::endl;
+        std::cout << "Force(3) is: " << RecvLowROS.footForce[2] << std::endl;
+        std::cout << "Force(4) is: " << RecvLowROS.footForce[3] << std::endl;
+
+
+        std::cout << "Error FL: " << robot.FL_angle_mea(0,0) - qDes[3] << std::endl;
+        std::cout << robot.FL_angle_mea(1,0) - qDes[4] << std::endl;
+        std::cout << robot.FL_angle_mea(2,0) - qDes[5] << std::endl;
+
+        std::cout << "Gain for FR[0] is: " << robot.Kp_joint[0] << std::endl;
 
         ros::spinOnce();
         loop_rate.sleep();
