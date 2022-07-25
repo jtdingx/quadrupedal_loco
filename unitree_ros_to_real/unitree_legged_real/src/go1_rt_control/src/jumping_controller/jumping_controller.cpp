@@ -23,6 +23,18 @@ void get_data(Eigen::MatrixXd& mat, const std::string& file_name) {
     mat = Eigen::MatrixXd::Map(ptr, data_row, data_col);
 }
 
+
+double jointLinearInterpolation(double initPos, double targetPos, double rate, int j)
+{
+    double p;
+    rate = std::min(std::max(rate, 0.0), 1.0);
+    p = initPos*(1-rate) + targetPos*rate;
+    // dqDes[j] = 0.8*dqDes_old[j] + 0.2*(p - qDes[j])/(1.0/ctrl_estimation);
+    // dqDes_old[j] = dqDes[j];
+    return p;
+}
+
+
 class Quadruped{
     public:
 
@@ -139,13 +151,13 @@ class Quadruped{
         return SendLowROS;
     }
 
-    float stand_up(int rate_count){
+    void stand_up(float* qDes, int rate_count, const float qInit[12], const float homing_pose_q[12]){
         rate = pow(rate_count/400.0,2); 
         for(int j=0; j<12;j++)
         {
-            qDes[j] = jointLinearInterpolation(qInit[j], homing_pose_q[j], rate, 0);
+           qDes[j] = jointLinearInterpolation(qInit[j], homing_pose_q[j], rate, 0);
         }
-        return qDes;
+        
     }
 };
 
@@ -162,15 +174,6 @@ void* update_loop(void* param)
     }
 }
 
-double jointLinearInterpolation(double initPos, double targetPos, double rate, int j)
-{
-    double p;
-    rate = std::min(std::max(rate, 0.0), 1.0);
-    p = initPos*(1-rate) + targetPos*rate;
-    // dqDes[j] = 0.8*dqDes_old[j] + 0.2*(p - qDes[j])/(1.0/ctrl_estimation);
-    // dqDes_old[j] = dqDes[j];
-    return p;
-}
 
 
 //###############################
@@ -183,7 +186,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
               << "Press Enter to continue..." << std::endl;
     std::cin.ignore();
 
-    VERBOSE = true;
+    bool VERBOSE = true;
 
     int ctrl_estimation = 1000;
 
@@ -254,7 +257,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         if( motiontime >= 10 && motiontime <=  400){
             // printf("%f %f %f\n", );
             rate_count++;
-            qDes = robot.stand_up(rate_count);
+            robot.stand_up(qDes, rate_count, qInit, homing_pose_q);
         }
         // After 1000 steps, switch to on_ground PID gains (make sure the robot is on the ground)
         if (motiontime > 1000){
@@ -264,9 +267,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
 
         // Jumping:
-        if( motiontime >= 2000 && motiontime <=  3000){
-            robot.jumping_control(motiontime);
-        }
+        // if( motiontime >= 2000 && motiontime <=  3000){
+        //     robot.jumping_control(motiontime);
+        // }
         // map the commands to the ROS message:
         SendLowROS = robot.publishCommand(SendLowROS,qDes);
         SendLowLCM = ToLcm(SendLowROS, SendLowLCM);

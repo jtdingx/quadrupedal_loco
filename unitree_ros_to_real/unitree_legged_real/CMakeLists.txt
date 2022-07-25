@@ -24,6 +24,7 @@ set(CMAKE_CXX_FLAGS "-O3")
 
 FIND_PACKAGE(Eigen3 REQUIRED)
 INCLUDE_DIRECTORIES(${EIGEN3_INCLUDE_DIR})
+
 MESSAGE(STATUS "EIGEN3_INCLUDE_DIR: ${EIGEN3_INCLUDE_DIR}")
 
 SET(SUB_SRC  src/go1_rt_control/src)
@@ -50,13 +51,16 @@ include_directories(
     ${SRC_PATH}
     ${SRC_PATH_NLP}
     /usr/local/include
+    /usr/local/lib
 )
 
 
 include_directories(/home/pi/go1_catkin/src/unitree_legged_sdk/include)
 link_directories(/home/pi/go1_catkin/src/unitree_legged_sdk/lib)
+link_directories(/usr/local/lib)
+
 string(CONCAT LEGGED_SDK_NAME libunitree_legged_sdk_arm64.so)
-set(EXTRA_LIBS ${LEGGED_SDK_NAME} lcm)
+set(EXTRA_LIBS ${LEGGED_SDK_NAME} lcm cnpy)
 
 add_executable(lcm_server /home/pi/go1_catkin/src/unitree_legged_sdk/examples/lcm_server.cpp)
 target_link_libraries(lcm_server ${EXTRA_LIBS} ${catkin_LIBRARIES})
@@ -104,7 +108,6 @@ ${SRC_PATH}/utils/EiQuadProg/EiQuadProg.cpp
 
 target_link_libraries(go1_servo_control ${EXTRA_LIBS} ${catkin_LIBRARIES})
 add_dependencies(go1_servo_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
 
 add_executable(jumping_controller 
 ${SRC_PATH}/jumping_controller/jumping_controller.cpp
