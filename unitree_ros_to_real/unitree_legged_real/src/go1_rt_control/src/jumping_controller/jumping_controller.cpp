@@ -11,8 +11,17 @@
 #include "Robotpara/robot_const_para_config.h"
 #include "geometry_msgs/Twist.h"
 #include "jumping_controller.h"
+#include "cnpy.h"
 //###############################
 
+
+void get_data(Eigen::MatrixXd& mat, const std::string& file_name) {
+    cnpy::NpyArray history = cnpy::npy_load(file_name);
+    double* ptr = history.data<double>();
+    int data_row = history.shape[0];
+    int data_col = history.shape[1];
+    mat = Eigen::MatrixXd::Map(ptr, data_row, data_col);
+}
 
 class Quadruped{
     public:
@@ -221,6 +230,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         SendLowROS.motorCmd[i].mode = 0x0A;   // motor switch to servo (PMSM) mode
     }
 
+    Eigen::MatrixXd loaded_history;
+    get_data(loaded_history, "history.npy");
+    std::cout << loaded_history(0,0) << std::endl;
 
 //------------------ MAIN LOOP -------------------------
     while (ros::ok()){
