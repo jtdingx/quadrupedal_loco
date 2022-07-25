@@ -50,6 +50,7 @@ include_directories(
     ${SRC_PATH}
     ${SRC_PATH_NLP}
     /usr/local/include
+    /usr/local/lib  # For cnpy
 )
 
 
