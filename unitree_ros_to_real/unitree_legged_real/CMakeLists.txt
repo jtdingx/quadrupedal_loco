@@ -74,6 +74,7 @@ add_executable(torque_lcm src/exe/torque_mode.cpp)
 target_link_libraries(torque_lcm ${EXTRA_LIBS} ${catkin_LIBRARIES})
 add_dependencies(torque_lcm ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+
 add_executable(walk_lcm src/exe/walk_mode.cpp)
 target_link_libraries(walk_lcm ${EXTRA_LIBS} ${catkin_LIBRARIES})
 add_dependencies(walk_lcm ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -103,6 +104,18 @@ ${SRC_PATH}/utils/EiQuadProg/EiQuadProg.cpp
 
 target_link_libraries(go1_servo_control ${EXTRA_LIBS} ${catkin_LIBRARIES})
 add_dependencies(go1_servo_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+
+add_executable(jumping_controller 
+${SRC_PATH}/jumping_controller/jumping_controller.cpp
+${SRC_PATH}/kinematics/Kinematics.cpp
+${SRC_PATH}/Robotpara/robot_const_para_config.cpp
+${SRC_PATH}/utils/Utils.cpp
+${SRC_PATH}/body/body.cpp
+)
+
+target_link_libraries(jumping_controller ${EXTRA_LIBS} ${catkin_LIBRARIES})
+add_dependencies(jumping_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 
 ########################## for nlp_mosek generation################
