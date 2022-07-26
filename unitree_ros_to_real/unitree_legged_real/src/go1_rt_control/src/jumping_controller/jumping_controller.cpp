@@ -15,22 +15,22 @@
 //###############################
 
 
-std::string dirname(const std::string& s) {
-    std::string::size_type last = s.find_last_of("/");
-    return std::string(s.begin(), s.begin() + last);
-}
+// std::string dirname(const std::string& s) {
+//     std::string::size_type last = s.find_last_of("/");
+//     return std::string(s.begin(), s.begin() + last);
+// }
 
-std::string get_file() {
-    char buffer[PATH_MAX];
-    ssize_t count = readlink("/proc/self/exe", buffer, PATH_MAX);
-    return std::string(buffer, (count > 0) ? count : 0);
-}
+// std::string get_file() {
+//     char buffer[PATH_MAX];
+//     ssize_t count = readlink("/proc/self/exe", buffer, PATH_MAX);
+//     return std::string(buffer, (count > 0) ? count : 0);
+// }
 
-std::string get_history_path(const std::string& s) {
-    std::string file_path = get_file();
-    std::string dir = dirname(file_path);
-    return dir + "/" + s;
-}
+// std::string get_history_path(const std::string& s) {
+//     std::string file_path = get_file();
+//     std::string dir = dirname(file_path);
+//     return dir + "/" + s;
+// }
 
 
 void get_data(Eigen::MatrixXd& mat, const std::string& file_name) {
@@ -73,9 +73,8 @@ class Quadruped{
     }
 
     void upload_history(const std::string& history_file, int& n_cols) {
-        get_data(history, get_history_path(history_file));
+        get_data(history, history_file);
         n_cols = history.cols();  // history length
-        std::cout << "history value [0,0] -> " << history(0,0) << std::endl;
     }
 
     void zeroStates(){
@@ -184,12 +183,9 @@ class Quadruped{
     }
 
     void select_reference(float* q_des, int rc) {
-        Eigen::Matrix<double, 12, 1> q_reference;
-        
-        q_reference_current = history.n_cols(rc);
         for(int j=0; j<12;j++)
         {
-           q_des[j] = q_reference_current(j, 0);
+           q_des[j] = history(j, rc);
         }
     }
 };
@@ -235,7 +231,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     int history_length;
     robot.upload_history("history.npy", history_length);
     float q_test[12];
-    q_test = robot.select_reference(q_test, 0);
+    robot.select_reference(q_test, 0);
     for(int j=0; j<12;j++)
         {
            std::cout << q_test[j] << std::endl;
@@ -272,10 +268,6 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         SendLowROS.motorCmd[i].mode = 0x0A;   // motor switch to servo (PMSM) mode
     }
 
-    Eigen::MatrixXd loaded_history;
-    get_data(loaded_history, get_history_path("history.npy"));
-    std::cout << loaded_history(0,0) << std::endl;
-
 //------------------ MAIN LOOP -------------------------
     while (ros::ok()){
         roslcm.Get(RecvLowLCM);
@@ -310,9 +302,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         //     robot.jumping_control(motiontime);
         // }
         // map the commands to the ROS message:
-        SendLowROS = robot.publishCommand(SendLowROS,qDes);
-        SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
-        roslcm.Send(SendLowLCM);
+        // SendLowROS = robot.publishCommand(SendLowROS,qDes);
+        // SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
+        // roslcm.Send(SendLowLCM);
 
         if (VERBOSE){
         std::cout << "---------------------------------------" << std::endl;
