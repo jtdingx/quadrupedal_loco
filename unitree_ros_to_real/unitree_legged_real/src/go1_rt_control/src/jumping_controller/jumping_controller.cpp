@@ -95,9 +95,12 @@ void Quadruped::PIDgains(bool on_ground=false){
         Kp[2] = 50.0;
     }
     else{
-        Kp[0] = 10.0;
-        Kp[1] = 10.0;
-        Kp[2] = 12.0;
+        // Kp[0] = 10.0;
+        // Kp[1] = 10.0;
+        // Kp[2] = 12.0;
+        Kp[0] = 3.0;
+        Kp[1] = 5.0;
+        Kp[2] = 5.0;
     }
     
     for(int j=0; j<4; j++)
@@ -175,7 +178,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     ros::NodeHandle n;
     ros::Rate loop_rate(ctrl_estimation);
-
+zeros
     ros::Publisher gait_data_pub; // for data_analysis
     ros::Publisher gait_data_pubx;  
 
@@ -274,7 +277,10 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                 if (rc == history_length - 1){
                     // In the final iteration, record qInit
                     rate_count = 0;
-                    qInit = qDes;
+                    for(int j=0; j<12;j++)
+                    {
+                        qInit[j] = qDes[j];
+                    }
                     break;
                 }
                 sub_rc = 1;
