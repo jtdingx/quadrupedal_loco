@@ -228,15 +228,6 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
     Quadruped robot = Quadruped();
 
-    int history_length;
-    robot.upload_history("history.npy", history_length);
-    float q_test[12];
-    robot.select_reference(q_test, 0);
-    for(int j=0; j<12;j++)
-        {
-           std::cout << q_test[j] << std::endl;
-        }
-
     TCmd SendLowLCM = {0};
     TState RecvLowLCM = {0};
     unitree_legged_msgs::LowCmd SendLowROS;
@@ -251,6 +242,16 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     float qDes[12] = {0}; // Current desired angle
     // Desired homing pose
     float homing_pose_q[12] = {0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2,0.0, pi/4, -pi/2};    
+    
+    // Jumping variable and counters
+    int history_length;
+    robot.upload_history("history.npy", history_length);
+    int rc = 0;  
+    int sub_rc = 1;
+    float q_ref_current[12];
+    float q_ref_next[12];
+    robot.select_reference(q_ref_current, 0);
+    robot.select_reference(q_ref_next, 1);
 
     //===desired joint angles
     FR_angle_des.setZero(); FL_angle_des.setZero(); RR_angle_des.setZero(); RL_angle_des.setZero(); 
@@ -298,9 +299,23 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
 
 
         // Jumping:
-        // if( motiontime >= 2000 && motiontime <=  3000){
-        //     robot.jumping_control(motiontime);
-        // }
+        if (motiontime >= 2000 && rc < history_length){
+            if (sub_rc == 10) {
+                rc++;
+                sub_rc = 1;
+                robot.select_reference(q_ref_current, rc);
+                robot.select_reference(q_ref_next, rc + 1);
+            }
+            
+            for(int j=0; j<12;j++)
+                {
+                qDes[j] = jointLinearInterpolation(q_ref_current[j],
+                                                    q_ref_next[j],
+                                                    sub_rc / 10.0,
+                                                    0);
+                }
+            sub_rc++;
+        }
         // map the commands to the ROS message:
         // SendLowROS = robot.publishCommand(SendLowROS,qDes);
         // SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
