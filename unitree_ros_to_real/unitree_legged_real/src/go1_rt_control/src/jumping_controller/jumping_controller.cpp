@@ -1,37 +1,9 @@
-#include <ros/ros.h>
-#include <pthread.h>
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
-#include <unitree_legged_msgs/LowCmd.h>
-#include <unitree_legged_msgs/LowState.h>
-#include "convert.h"
-#include "sensor_msgs/JointState.h"
-#include <Eigen/Dense>
 #include "go1_const.h"
 #include "Robotpara/robot_const_para_config.h"
 #include "geometry_msgs/Twist.h"
 #include "jumping_controller.h"
 #include "cnpy.h"
 //###############################
-
-
-// std::string dirname(const std::string& s) {
-//     std::string::size_type last = s.find_last_of("/");
-//     return std::string(s.begin(), s.begin() + last);
-// }
-
-// std::string get_file() {
-//     char buffer[PATH_MAX];
-//     ssize_t count = readlink("/proc/self/exe", buffer, PATH_MAX);
-//     return std::string(buffer, (count > 0) ? count : 0);
-// }
-
-// std::string get_history_path(const std::string& s) {
-//     std::string file_path = get_file();
-//     std::string dir = dirname(file_path);
-//     return dir + "/" + s;
-// }
-
 
 void get_data(Eigen::MatrixXd& mat, const std::string& file_name) {
     cnpy::NpyArray history = cnpy::npy_load(file_name);
@@ -47,148 +19,133 @@ double jointLinearInterpolation(double initPos, double targetPos, double rate, i
     double p;
     rate = std::min(std::max(rate, 0.0), 1.0);
     p = initPos*(1-rate) + targetPos*rate;
-    // dqDes[j] = 0.8*dqDes_old[j] + 0.2*(p - qDes[j])/(1.0/ctrl_estimation);
-    // dqDes_old[j] = dqDes[j];
     return p;
 }
 
 
-class Quadruped{
-    public:
+Quadruped::Quadruped(){
+    bool on_ground = false;
+    PIDgains(on_ground);
+    zeroStates();
+}
 
-    Eigen::Matrix<double,3,1> FR_angle_mea, FL_angle_mea, RR_angle_mea, RL_angle_mea;
-    Eigen::Matrix<double,3,1> FR_dq_mea, FL_dq_mea, RR_dq_mea, RL_dq_mea;
-    // Body position and orientation:
-    Eigen::Vector3d base_pos;
-    Eigen::Vector3d base_rpy; // LATER CORRECT FOR DRIFT
-    Eigen::MatrixXd history;
+void Quadruped::upload_history(const std::string& history_file, int& n_cols) {
+    get_data(history, history_file);
+    n_cols = history.cols();  // history length
+}
 
-    float Kp_joint[12];
-    float Kd_joint[12];
+void Quadruped::zeroStates(){
+    FR_angle_mea.setZero();
+    FL_angle_mea.setZero();
+    RR_angle_mea.setZero();
+    RL_angle_mea.setZero();
 
-    Quadruped(){
-        bool on_ground = false;
-        PIDgains(on_ground);
-        zeroStates();
-    }
+    FR_dq_mea.setZero();
+    FL_dq_mea.setZero();
+    RR_dq_mea.setZero();
+    RL_dq_mea.setZero();
 
-    void upload_history(const std::string& history_file, int& n_cols) {
-        get_data(history, history_file);
-        n_cols = history.cols();  // history length
-    }
+    base_pos.setZero();
+    base_rpy.setZero();
 
-    void zeroStates(){
-        FR_angle_mea.setZero();
-        FL_angle_mea.setZero();
-        RR_angle_mea.setZero();
-        RL_angle_mea.setZero();
-
-        FR_dq_mea.setZero();
-        FL_dq_mea.setZero();
-        RR_dq_mea.setZero();
-        RL_dq_mea.setZero();
-
-        base_pos.setZero();
-        base_rpy.setZero();
-
-    };
-
-    void updateStates(unitree_legged_msgs::LowState RecvLowROS){
-        //"""This function assigns the received robot states to the respective variables."""
-        FR_angle_mea(0,0) = RecvLowROS.motorState[0].q;
-        FR_angle_mea(1,0) = RecvLowROS.motorState[1].q;
-        FR_angle_mea(2,0) = RecvLowROS.motorState[2].q;
-        FL_angle_mea(0,0) = RecvLowROS.motorState[3].q;
-        FL_angle_mea(1,0) = RecvLowROS.motorState[4].q;
-        FL_angle_mea(2,0) = RecvLowROS.motorState[5].q;
-        RR_angle_mea(0,0) = RecvLowROS.motorState[6].q;
-        RR_angle_mea(1,0) = RecvLowROS.motorState[7].q;
-        RR_angle_mea(2,0) = RecvLowROS.motorState[8].q;
-        RL_angle_mea(0,0) = RecvLowROS.motorState[9].q;
-        RL_angle_mea(1,0) = RecvLowROS.motorState[10].q;
-        RL_angle_mea(2,0) = RecvLowROS.motorState[11].q;
-
-        FR_dq_mea(0,0) = RecvLowROS.motorState[0].dq;
-        FR_dq_mea(1,0) = RecvLowROS.motorState[1].dq;
-        FR_dq_mea(2,0) = RecvLowROS.motorState[2].dq;
-        FL_dq_mea(0,0) = RecvLowROS.motorState[3].dq;
-        FL_dq_mea(1,0) = RecvLowROS.motorState[4].dq;
-        FL_dq_mea(2,0) = RecvLowROS.motorState[5].dq;
-        RR_dq_mea(0,0) = RecvLowROS.motorState[6].dq;
-        RR_dq_mea(1,0) = RecvLowROS.motorState[7].dq;
-        RR_dq_mea(2,0) = RecvLowROS.motorState[8].dq;
-        RL_dq_mea(0,0) = RecvLowROS.motorState[9].dq;
-        RL_dq_mea(1,0) = RecvLowROS.motorState[10].dq;
-        RL_dq_mea(2,0) = RecvLowROS.motorState[11].dq;
-
-
-        Eigen::Quaterniond root_quat = Eigen::Quaterniond(RecvLowROS.imu.quaternion[0],
-                                       RecvLowROS.imu.quaternion[1],
-                                       RecvLowROS.imu.quaternion[2],
-                                       RecvLowROS.imu.quaternion[3]); 
-
-        base_rpy = Utils::quat_to_euler(root_quat);
-    };
-
-    void PIDgains(bool on_ground=false){
-        double Kp[3];
-        if (on_ground){
-            Kp[0] = 20.0;
-            Kp[1] = 30.0;
-            Kp[2] = 50.0;
-        }
-        else{
-            Kp[0] = 10.0;
-            Kp[1] = 10.0;
-            Kp[2] = 12.0;
-        }
-        
-        for(int j=0; j<4; j++)
-        {
-            Kp_joint[j*3] = Kp[0];
-            Kp_joint[j*3+1] = Kp[1];
-            Kp_joint[j*3+2] = Kp[2];
-
-            Kd_joint[j*3] = 1.0; 
-            Kd_joint[j*3+1] = 1.0; 
-            Kd_joint[j*3+2] = 1.0; 
-        }
-
-    }
-
-    unitree_legged_msgs::LowCmd publishCommand(unitree_legged_msgs::LowCmd SendLowROS,float qDes[12]){
-        for(int j=0; j<12;j++)
-        {   
-            ////// joint-level + toruqe
-            SendLowROS.motorCmd[j].q = qDes[j];
-            SendLowROS.motorCmd[j].dq = 0;
-            SendLowROS.motorCmd[j].Kp = Kp_joint[j];
-            SendLowROS.motorCmd[j].Kd = Kd_joint[j];
-            SendLowROS.motorCmd[j].tau = 0;                 
-        }
-        SendLowROS.motorCmd[FR_0].tau = -0.65f;
-        SendLowROS.motorCmd[FL_0].tau = +0.65f;
-        SendLowROS.motorCmd[RR_0].tau = -0.65f;
-        SendLowROS.motorCmd[RL_0].tau = +0.65f;
-
-        return SendLowROS;
-    }
-
-    void stand_up(float* qDes, int rate_count, const float qInit[12], const float homing_pose_q[12]){
-        rate = pow(rate_count/400.0,2); 
-        for(int j=0; j<12;j++)
-        {
-           qDes[j] = jointLinearInterpolation(qInit[j], homing_pose_q[j], rate, 0);
-        }
-    }
-
-    void select_reference(float* q_des, int rc) {
-        for(int j=0; j<12;j++)
-        {
-           q_des[j] = history(j, rc);
-        }
-    }
 };
+
+void Quadruped::updateStates(unitree_legged_msgs::LowState RecvLowROS){
+    //"""This function assigns the received robot states to the respective variables."""
+    FR_angle_mea(0,0) = RecvLowROS.motorState[0].q;
+    FR_angle_mea(1,0) = RecvLowROS.motorState[1].q;
+    FR_angle_mea(2,0) = RecvLowROS.motorState[2].q;
+    FL_angle_mea(0,0) = RecvLowROS.motorState[3].q;
+    FL_angle_mea(1,0) = RecvLowROS.motorState[4].q;
+    FL_angle_mea(2,0) = RecvLowROS.motorState[5].q;
+    RR_angle_mea(0,0) = RecvLowROS.motorState[6].q;
+    RR_angle_mea(1,0) = RecvLowROS.motorState[7].q;
+    RR_angle_mea(2,0) = RecvLowROS.motorState[8].q;
+    RL_angle_mea(0,0) = RecvLowROS.motorState[9].q;
+    RL_angle_mea(1,0) = RecvLowROS.motorState[10].q;
+    RL_angle_mea(2,0) = RecvLowROS.motorState[11].q;
+
+    FR_dq_mea(0,0) = RecvLowROS.motorState[0].dq;
+    FR_dq_mea(1,0) = RecvLowROS.motorState[1].dq;
+    FR_dq_mea(2,0) = RecvLowROS.motorState[2].dq;
+    FL_dq_mea(0,0) = RecvLowROS.motorState[3].dq;
+    FL_dq_mea(1,0) = RecvLowROS.motorState[4].dq;
+    FL_dq_mea(2,0) = RecvLowROS.motorState[5].dq;
+    RR_dq_mea(0,0) = RecvLowROS.motorState[6].dq;
+    RR_dq_mea(1,0) = RecvLowROS.motorState[7].dq;
+    RR_dq_mea(2,0) = RecvLowROS.motorState[8].dq;
+    RL_dq_mea(0,0) = RecvLowROS.motorState[9].dq;
+    RL_dq_mea(1,0) = RecvLowROS.motorState[10].dq;
+    RL_dq_mea(2,0) = RecvLowROS.motorState[11].dq;
+
+
+    Eigen::Quaterniond root_quat = Eigen::Quaterniond(RecvLowROS.imu.quaternion[0],
+                                    RecvLowROS.imu.quaternion[1],
+                                    RecvLowROS.imu.quaternion[2],
+                                    RecvLowROS.imu.quaternion[3]); 
+
+    base_rpy = Utils::quat_to_euler(root_quat);
+};
+
+void Quadruped::PIDgains(bool on_ground=false){
+    double Kp[3];
+    if (on_ground){
+        Kp[0] = 20.0;
+        Kp[1] = 30.0;
+        Kp[2] = 50.0;
+    }
+    else{
+        Kp[0] = 10.0;
+        Kp[1] = 10.0;
+        Kp[2] = 12.0;
+    }
+    
+    for(int j=0; j<4; j++)
+    {
+        Kp_joint[j*3] = Kp[0];
+        Kp_joint[j*3+1] = Kp[1];
+        Kp_joint[j*3+2] = Kp[2];
+
+        Kd_joint[j*3] = 1.0; 
+        Kd_joint[j*3+1] = 1.0; 
+        Kd_joint[j*3+2] = 1.0; 
+    }
+
+}
+
+unitree_legged_msgs::LowCmd Quadruped::publishCommand(unitree_legged_msgs::LowCmd SendLowROS,float qDes[12]){
+    for(int j=0; j<12;j++)
+    {   
+        ////// joint-level + toruqe
+        SendLowROS.motorCmd[j].q = qDes[j];
+        SendLowROS.motorCmd[j].dq = 0;
+        SendLowROS.motorCmd[j].Kp = Kp_joint[j];
+        SendLowROS.motorCmd[j].Kd = Kd_joint[j];
+        SendLowROS.motorCmd[j].tau = 0;                 
+    }
+    SendLowROS.motorCmd[FR_0].tau = -0.65f;
+    SendLowROS.motorCmd[FL_0].tau = +0.65f;
+    SendLowROS.motorCmd[RR_0].tau = -0.65f;
+    SendLowROS.motorCmd[RL_0].tau = +0.65f;
+
+    return SendLowROS;
+}
+
+void Quadruped::stand_up(float* qDes, int rate_count, const float qInit[12], const float homing_pose_q[12]){
+    rate = pow(rate_count/400.0,2); 
+    for(int j=0; j<12;j++)
+    {
+        qDes[j] = jointLinearInterpolation(qInit[j], homing_pose_q[j], rate, 0);
+    }
+}
+
+void Quadruped::select_reference(float* q_des, int rc) {
+    for(int j=0; j<12;j++)
+    {
+        q_des[j] = history(j, rc);
+    }
+}
+
 
 
 template<typename TLCM>
