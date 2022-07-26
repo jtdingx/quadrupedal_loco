@@ -250,20 +250,16 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         }
         // After 1000 steps, switch to on_ground PID gains (make sure the robot is on the ground)
         if (motiontime > 1000){
-            bool on_ground = true;
+            bool on_ground = false;
             robot.PIDgains(on_ground);
         }
 
 
         // Jumping:
-        if (motiontime >= 2000 && rc < history_length){
-            if (sub_rc == 10) {
-                rc++;
-                sub_rc = 1;
-                robot.select_reference(q_ref_current, rc);
-                robot.select_reference(q_ref_next, rc + 1);
-            }
-            
+        if (motiontime >= 2000 && rc < history_length - 1){
+            std::cout << "Jumping..." << std::endl;
+            bool on_ground = false;
+            robot.PIDgains(on_ground);
             for(int j=0; j<12;j++)
                 {
                 qDes[j] = jointLinearInterpolation(q_ref_current[j],
@@ -272,11 +268,33 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                                                     0);
                 }
             sub_rc++;
+
+            if (sub_rc == 10) {
+                rc++; 
+                if (rc == history_length - 1){
+                    // In the final iteration, record qInit
+                    rate_count = 0;
+                    qInit = qDes;
+                    break;
+                }
+                sub_rc = 1;
+                robot.select_reference(q_ref_current, rc);
+                robot.select_reference(q_ref_next, rc + 1);
+            }
         }
+
+        if (rc == history_length - 1){
+            std::cout << "Jumping done. Now standing up again." << std::endl;
+            bool on_ground = false;
+            robot.PIDgains(on_ground);
+            rate_count++;
+            robot.stand_up(qDes, rate_count, qInit, homing_pose_q);
+        }
+
         // map the commands to the ROS message:
-        // SendLowROS = robot.publishCommand(SendLowROS,qDes);
-        // SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
-        // roslcm.Send(SendLowLCM);
+        SendLowROS = robot.publishCommand(SendLowROS,qDes);
+        SendLowLCM = ToLcm(SendLowROS, SendLowLCM);
+        roslcm.Send(SendLowLCM);
 
         if (VERBOSE){
         std::cout << "---------------------------------------" << std::endl;

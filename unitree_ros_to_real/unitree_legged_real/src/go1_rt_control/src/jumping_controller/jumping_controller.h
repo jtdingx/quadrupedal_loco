@@ -33,7 +33,7 @@ class Quadruped{
     float Kp_joint[12];
     float Kd_joint[12];
     
-    Eigen::MatrixXd history;
+    Eigen::MatrixXd;
 
     Quadruped();
 
