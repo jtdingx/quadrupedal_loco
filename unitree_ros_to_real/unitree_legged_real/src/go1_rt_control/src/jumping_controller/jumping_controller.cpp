@@ -267,12 +267,12 @@ zeros
                 {
                 qDes[j] = jointLinearInterpolation(q_ref_current[j],
                                                     q_ref_next[j],
-                                                    sub_rc / 10.0,
+                                                    sub_rc / 1000.0,
                                                     0);
                 }
             sub_rc++;
 
-            if (sub_rc == 10) {
+            if (sub_rc == 1000) {
                 rc++; 
                 if (rc == history_length - 1){
                     // In the final iteration, record qInit
