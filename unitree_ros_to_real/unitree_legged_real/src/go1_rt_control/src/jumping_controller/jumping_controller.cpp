@@ -15,6 +15,24 @@
 //###############################
 
 
+std::string dirname(const std::string& s) {
+    std::string::size_type last = s.find_last_of("/");
+    return std::string(s.begin(), s.begin() + last);
+}
+
+std::string get_file() {
+    char buffer[PATH_MAX];
+    ssize_t count = readlink("/proc/self/exe", buffer, PATH_MAX);
+    return std::string(buffer, (count > 0) ? count : 0);
+}
+
+std::string get_history_path(const std::string& s) {
+    std::string file_path = get_file();
+    std::string dir = dirname(file_path);
+    return dir + "/" + s;
+}
+
+
 void get_data(Eigen::MatrixXd& mat, const std::string& file_name) {
     cnpy::NpyArray history = cnpy::npy_load(file_name);
     double* ptr = history.data<double>();
@@ -289,8 +307,6 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         std::cout << "Gain for FR[0] is: " << robot.Kp_joint[0] << std::endl;
         }
 
-
-        
         ros::spinOnce();
         loop_rate.sleep();
     };
