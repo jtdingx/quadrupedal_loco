@@ -61,6 +61,7 @@ class Quadruped{
     // Body position and orientation:
     Eigen::Vector3d base_pos;
     Eigen::Vector3d base_rpy; // LATER CORRECT FOR DRIFT
+    Eigen::MatrixXd history;
 
     float Kp_joint[12];
     float Kd_joint[12];
@@ -71,7 +72,12 @@ class Quadruped{
         zeroStates();
     }
 
-    
+    void upload_history(const std::string& history_file, int& n_cols) {
+        get_data(history, get_history_path(history_file));
+        n_cols = history.cols();  // history length
+        std::cout << "history value [0,0] -> " << history(0,0) << std::endl;
+    }
+
     void zeroStates(){
         FR_angle_mea.setZero();
         FL_angle_mea.setZero();
@@ -175,11 +181,18 @@ class Quadruped{
         {
            qDes[j] = jointLinearInterpolation(qInit[j], homing_pose_q[j], rate, 0);
         }
+    }
+
+    void select_reference(float* q_des, int rc) {
+        Eigen::Matrix<double, 12, 1> q_reference;
         
+        q_reference_current = history.n_cols(rc);
+        for(int j=0; j<12;j++)
+        {
+           q_des[j] = q_reference_current(j, 0);
+        }
     }
 };
-
-
 
 
 template<typename TLCM>
@@ -191,7 +204,6 @@ void* update_loop(void* param)
         usleep(2000);
     }
 }
-
 
 
 //###############################
@@ -219,6 +231,15 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     long motiontime=0;
 
     Quadruped robot = Quadruped();
+
+    int history_length;
+    robot.upload_history("history.npy", history_length);
+    float q_test[12];
+    q_test = robot.select_reference(q_test, 0);
+    for(int j=0; j<12;j++)
+        {
+           std::cout << q_test[j] << std::endl;
+        }
 
     TCmd SendLowLCM = {0};
     TState RecvLowLCM = {0};
